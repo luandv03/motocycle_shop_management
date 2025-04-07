@@ -190,7 +190,7 @@ const DashboardPage: React.FC = () => {
                 <Col span={8}>
                     <Card
                         title="Top sản phẩm bán ra"
-                        extra={<a href="/products">Xem chi tiết</a>}
+                        extra={<a href="/products/motorcycles">Xem chi tiết</a>}
                     >
                         {topProducts.map((product, index) => (
                             <Row key={index} style={{ marginBottom: 16 }}>
