@@ -83,7 +83,7 @@ function App() {
                     ></Route>
 
                     <Route
-                        path="/repairs/:repairId"
+                        path="/repairs/:id"
                         element={<RepairDetailPage />}
                     ></Route>
 
@@ -93,7 +93,7 @@ function App() {
                     ></Route>
 
                     <Route
-                        path="/invoice/:invoiceId"
+                        path="/invoice/:id"
                         element={<InvoiceDetailPage />}
                     ></Route>
 

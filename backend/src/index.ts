@@ -10,6 +10,8 @@ import accessorieRoutes from "./routes/accessorie/accessorie.route";
 import customerRoutes from "./routes/customer/customer.route";
 import repairRoutes from "./routes/repair/repair.route";
 import pointRoutes from "./routes/point/point.route";
+import invoiceRoutes from "./routes/invoice/invoice.route";
+import paymentRoutes from "./routes/payment/payment.route";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,6 +37,8 @@ app.use("/api/accessories", accessorieRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/repairs", repairRoutes);
 app.use("/api/points", pointRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/payments", paymentRoutes); // Đường dẫn cho thanh toán
 
 // Test route
 app.get("/", (req, res) => {

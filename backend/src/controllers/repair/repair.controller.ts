@@ -12,19 +12,14 @@ export class RepairController {
                 include: [
                     {
                         model: Customer,
-                        attributes: [
-                            "customer_id",
-                            "fullname",
-                            "phonenumber",
-                            "address",
-                        ], // Thông tin khách hàng
+                        attributes: ["customer_id", "fullname"], // Thông tin khách hàng
                     },
                     {
                         model: RepairAccessories,
                         include: [
                             {
                                 model: Accessorie,
-                                attributes: ["accessorie_name"], // Lấy tên phụ tùng
+                                attributes: ["accessory_id", "accessory_name"], // Lấy tên phụ tùng
                             },
                         ],
                     },
@@ -37,13 +32,16 @@ export class RepairController {
             const result = repairs.map((repair: any) => ({
                 repair_id: repair.repair_id,
                 motocycle_name: repair.motocycle_name,
-                customer: repair.Customer,
+                customer: repair.customer,
                 repair_detail: repair.repair_detail,
-                accessories: repair.repairAccessories.map(
-                    (ra: any) => ra.accessorie?.accessorie_name || null
-                ), // Danh sách phụ tùng
+                accessories: repair.repairAccessories.map((ra: any) => ({
+                    accessory_id: ra.accessory_id,
+                    accessory_name: ra.accessorie?.accessory_name || null,
+                    quantity: ra.quantity, // Lấy số lượng từ RepairAccessories
+                })), // Danh sách phụ tùng
                 extra_fee: repair.extra_fee,
                 cost: repair.cost,
+                status: repair.status,
                 repair_time: repair.repair_time,
             }));
 
@@ -105,7 +103,7 @@ export class RepairController {
                 repair_time,
             });
 
-            const newAccessories: string[] = [];
+            const newAccessories = [];
             // Thêm phụ tùng vào RepairAccessories nếu có
             if (accessories && accessories.length > 0) {
                 for (const accessory of accessories) {
@@ -113,7 +111,7 @@ export class RepairController {
                         accessory?.accessory_id
                     );
                     if (existAccessory) {
-                        newAccessories.push(existAccessory.accessorie_name);
+                        newAccessories.push(existAccessory);
                         await RepairAccessories.create({
                             repair_id: newRepair?.repair_id,
                             accessory_id: accessory?.accessory_id,
@@ -124,8 +122,14 @@ export class RepairController {
                 }
             }
 
+            delete (newRepair as any).customer_id;
+
             const newRepairtVip = {
                 ...newRepair.toJSON(),
+                customer: {
+                    customer_id: customer.customer_id,
+                    fullname: customer.fullname,
+                },
                 accessories: newAccessories,
             };
 
@@ -161,7 +165,7 @@ export class RepairController {
                         include: [
                             {
                                 model: Accessorie,
-                                attributes: ["accessorie_name"], // Lấy tên phụ tùng
+                                attributes: ["accessory_name"], // Lấy tên phụ tùng
                             },
                         ],
                     },
@@ -179,7 +183,7 @@ export class RepairController {
                 repair_detail: repair.repair_detail,
                 accessories: (repair.repairAccessories || []).map(
                     (ra: any) => ({
-                        accessory_name: ra.accessorie?.accessorie_name || null,
+                        accessory_name: ra.accessorie?.accessory_name || null,
                         quantity: ra.quantity,
                         unit_price: ra.unit_price,
                     })

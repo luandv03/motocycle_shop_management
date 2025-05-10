@@ -24,7 +24,7 @@ export class CustomerController {
                         Customer.sequelize!.fn(
                             "SUM",
                             Customer.sequelize!.literal(
-                                `CASE WHEN "invoices"."invoice_type" = 'purchase' THEN 1 ELSE 0 END`
+                                `CASE WHEN "invoices"."invoice_type" != 'Sửa chữa' THEN 1 ELSE 0 END`
                             )
                         ),
                         "purchase_count", // Số lượt mua
@@ -33,7 +33,7 @@ export class CustomerController {
                         Customer.sequelize!.fn(
                             "SUM",
                             Customer.sequelize!.literal(
-                                `CASE WHEN "invoices"."invoice_type" = 'repair' THEN 1 ELSE 0 END`
+                                `CASE WHEN "invoices"."invoice_type" = 'Sửa chữa' THEN 1 ELSE 0 END`
                             )
                         ),
                         "repair_count", // Số lần sửa chữa

@@ -8,9 +8,11 @@ import {
     BeforeCreate,
     BelongsTo,
     BeforeBulkCreate,
+    HasMany,
 } from "sequelize-typescript";
 import { Motocycle } from "./Motocycle";
 import { Color } from "./Color";
+import { InvoiceMotocycleDetail } from "./InvoiceMotocycleDetail";
 
 @Table({ tableName: "motocycleColor" })
 export class MotocycleColor extends Model {
@@ -37,6 +39,9 @@ export class MotocycleColor extends Model {
 
     @BelongsTo(() => Motocycle)
     Motocycle!: Motocycle; // Định nghĩa mối quan hệ với bảng Motocycle
+
+    @HasMany(() => InvoiceMotocycleDetail) // Thêm quan hệ hasMany
+    invoiceMotocycleDetails!: InvoiceMotocycleDetail[];
 
     @BeforeCreate
     static async generateMotocycleColorId(instance: MotocycleColor) {

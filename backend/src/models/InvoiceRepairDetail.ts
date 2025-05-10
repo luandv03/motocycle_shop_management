@@ -6,6 +6,7 @@ import {
     DataType,
     ForeignKey,
     BeforeCreate,
+    BelongsTo,
 } from "sequelize-typescript";
 import { Invoice } from "./Invoice";
 import { Repairs } from "./Repairs";
@@ -20,15 +21,22 @@ export class InvoiceRepairDetail extends Model {
     @Column(DataType.STRING)
     invoice_id!: string;
 
+    @BelongsTo(() => Invoice) // Thêm quan hệ belongsTo với Invoice
+    invoice!: Invoice;
+
     @ForeignKey(() => Repairs)
     @Column(DataType.STRING)
-    repairlID!: string;
+    repair_id!: string;
+
+    @BelongsTo(() => Repairs) // Thêm quan hệ belongsTo với Repairs
+    repair!: Repairs;
 
     @BeforeCreate
     static async generateInvoiceRepairDetailId(instance: InvoiceRepairDetail) {
-        const count = await InvoiceRepairDetail.count();
-        instance.invoiceRepairDetail_id = `IRD${(count + 1)
-            .toString()
-            .padStart(3, "0")}`;
+        const maxId = await InvoiceRepairDetail.max("invoiceRepairDetail_id");
+        const currentId =
+            typeof maxId === "string" ? parseInt(maxId.slice(3)) : 0; // Kiểm tra maxId là chuỗi và lấy phần số
+        const nextId = `IRD${(currentId + 1).toString().padStart(3, "0")}`; // Tăng giá trị lên 1
+        instance.invoiceRepairDetail_id = nextId;
     }
 }

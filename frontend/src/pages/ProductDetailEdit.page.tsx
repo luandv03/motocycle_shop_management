@@ -190,6 +190,12 @@ const ProductDetailPage: React.FC = () => {
         setEditedProduct({ ...editedProduct, colors: updatedColors });
     };
 
+    const handleColorPriceChange = (index: number, value: number) => {
+        const updatedColors = [...editedProduct.colors];
+        updatedColors[index].price = value;
+        setEditedProduct({ ...editedProduct, colors: updatedColors });
+    };
+
     const handleUploadChange = ({ fileList: newFileList }: any) => {
         setFileList(newFileList);
         const updatedImages = newFileList.map(
@@ -440,7 +446,7 @@ const ProductDetailPage: React.FC = () => {
                                 min={0}
                                 value={color.price}
                                 onChange={(value) =>
-                                    handleColorQuantityChange(index, value!)
+                                    handleColorPriceChange(index, value!)
                                 }
                             />
                         ) : (

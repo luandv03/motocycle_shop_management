@@ -6,6 +6,8 @@ import {
     DataType,
     ForeignKey,
     BeforeCreate,
+    BeforeBulkCreate,
+    BelongsTo,
 } from "sequelize-typescript";
 import { Invoice } from "./Invoice";
 import { Accessorie } from "./Accessorie";
@@ -20,9 +22,15 @@ export class InvoiceAccessorieDetail extends Model {
     @Column(DataType.STRING)
     invoice_id!: string;
 
+    @BelongsTo(() => Invoice) // Thêm quan hệ belongsTo với Invoice
+    invoice!: Invoice;
+
     @ForeignKey(() => Accessorie)
     @Column(DataType.STRING)
     accessory_id!: string;
+
+    @BelongsTo(() => Accessorie) // Thêm quan hệ belongsTo với Accessorie
+    accessory!: Accessorie;
 
     @Column(DataType.INTEGER)
     quantity!: number;
@@ -34,9 +42,30 @@ export class InvoiceAccessorieDetail extends Model {
     static async generateInvoiceAccessorieDetailId(
         instance: InvoiceAccessorieDetail
     ) {
-        const count = await InvoiceAccessorieDetail.count();
-        instance.invoiceAccessorieDetail_id = `IAD${(count + 1)
-            .toString()
-            .padStart(3, "0")}`;
+        const maxId = await InvoiceAccessorieDetail.max(
+            "invoiceAccessorieDetail_id"
+        );
+        const currentId =
+            typeof maxId === "string" ? parseInt(maxId.slice(3)) : 0; // Kiểm tra maxId là chuỗi và lấy phần số
+        const nextId = `IAD${(currentId + 1).toString().padStart(3, "0")}`; // Tăng giá trị lên 1
+        instance.invoiceAccessorieDetail_id = nextId;
+    }
+
+    @BeforeBulkCreate
+    static async generateInvoiceAccessorieDetailIds(
+        instances: InvoiceAccessorieDetail[]
+    ) {
+        const maxId = await InvoiceAccessorieDetail.max(
+            "invoiceAccessorieDetail_id"
+        );
+        let currentId =
+            typeof maxId === "string" ? parseInt(maxId.slice(3)) : 0; // Kiểm tra maxId là chuỗi và lấy phần số
+
+        for (const instance of instances) {
+            currentId += 1;
+            instance.invoiceAccessorieDetail_id = `IAD${currentId
+                .toString()
+                .padStart(3, "0")}`; // Tăng giá trị lên 1
+        }
     }
 }

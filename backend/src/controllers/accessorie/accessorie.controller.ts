@@ -8,7 +8,7 @@ export class AccessorieController {
             const accessories = await Accessorie.findAll({
                 attributes: [
                     "accessory_id",
-                    "accessorie_name",
+                    "accessory_name",
                     "quantity",
                     "price",
                 ], // Lấy tên, số lượng, giá
@@ -42,7 +42,7 @@ export class AccessorieController {
             }
 
             const newAccessorie = await Accessorie.create({
-                accessorie_name,
+                accessory_name: accessorie_name,
                 quantity,
                 price,
             });
@@ -71,7 +71,11 @@ export class AccessorieController {
                     .json({ message: "Accessorie not found" });
             }
 
-            await accessorie.update({ accessorie_name, quantity, price });
+            await accessorie.update({
+                accessory_name: accessorie_name,
+                quantity,
+                price,
+            });
 
             return res.status(200).json({
                 statusCode: 200,

@@ -1,44 +1,44 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { Card, Table, Descriptions, Typography, Button } from "antd";
+import React, { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import {
+    Card,
+    Table,
+    Descriptions,
+    Typography,
+    Button,
+    Spin,
+    notification,
+} from "antd";
 import jsPDF from "jspdf";
 import { encode } from "base64-arraybuffer";
+import { getInvoiceById } from "../services/invoice.service";
 
 const { Title } = Typography;
 
 const InvoiceDetailPage: React.FC = () => {
-    // Mock dữ liệu hóa đơn
-    const invoiceData = {
-        invoiceId: "INV001",
-        customerName: "Nguyễn Văn A",
-        invoiceType: "Sửa chữa", // Loại hóa đơn: Mua xe, Sửa chữa, Mua phụ tùng
-        createdDate: "2025-04-03",
-        totalAmount: 32000000,
-        vat: 10,
-        discount: 5,
-        vehicles: [
-            {
-                name: "Honda Wave",
-                color: "Red",
-                quantity: 1,
-                price: 32000000,
-                total: 32000000,
-            },
-        ],
-        accessories: [
-            {
-                name: "Helmet",
-                quantity: 2,
-                price: 200000,
-                total: 400000,
-            },
-        ],
-        repairDetails: {
-            repairCode: "RP001",
-            description: "Thay dầu và sửa phanh",
-            total: 500000,
-        },
-    };
+    const { id } = useParams<{ id: string }>(); // Lấy ID từ URL
+    const [invoiceData, setInvoiceData] = useState<any>(null); // Dữ liệu hóa đơn
+    const [loading, setLoading] = useState<boolean>(true); // Trạng thái loading
+
+    useEffect(() => {
+        const fetchInvoiceDetails = async () => {
+            try {
+                setLoading(true);
+                const data = await getInvoiceById(id!); // Gọi API lấy chi tiết hóa đơn
+                setInvoiceData(data);
+            } catch (error: any) {
+                notification.error({
+                    message: "Lỗi",
+                    description:
+                        error.message || "Không thể tải chi tiết hóa đơn!",
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInvoiceDetails();
+    }, [id]);
 
     const exportToPDF = async () => {
         const pdf = new jsPDF("p", "mm", "a4");
@@ -56,106 +56,135 @@ const InvoiceDetailPage: React.FC = () => {
 
             // Tiêu đề hóa đơn
             pdf.setFontSize(16);
-            pdf.text("HÓA ĐƠN SỬA CHỮA XE MÁY", 105, 20, { align: "center" });
+            pdf.text("HÓA ĐƠN", 105, 20, { align: "center" });
 
-            // Thông tin cửa hàng
+            // Thông tin hóa đơn
             pdf.setFontSize(12);
-            pdf.text("Tên cửa hàng: Cửa hàng sửa chữa xe máy ABC", 10, 30);
-            pdf.text("Mã số thuế: 123456789", 10, 36);
-            pdf.text("Địa chỉ: 123 Đường ABC, Quận 1, TP.HCM", 10, 42);
-            pdf.text("Điện thoại: 0123456789", 10, 48);
-
-            // Thông tin khách hàng
-            pdf.text("Tên khách hàng: Nguyễn Văn A", 10, 60);
-            pdf.text("Mã số thuế: 987654321", 10, 66);
-            pdf.text("Địa chỉ: 456 Đường XYZ, Quận 2, TP.HCM", 10, 72);
+            pdf.text(`Mã hóa đơn: ${invoiceData.invoice_id}`, 10, 30);
+            pdf.text(`Tên khách hàng: ${invoiceData.customer_name}`, 10, 36);
+            pdf.text(
+                `Ngày tạo: ${new Date(
+                    invoiceData.invoice_date
+                ).toLocaleDateString("vi-VN")}`,
+                10,
+                42
+            );
+            pdf.text(`Loại hóa đơn: ${invoiceData.invoice_type}`, 10, 48);
+            pdf.text(
+                `Phương thức thanh toán: ${invoiceData.payment_method}`,
+                10,
+                54
+            );
 
             // Bảng chi tiết hóa đơn
             pdf.setFontSize(10);
-            pdf.text("STT", 10, 90);
-            pdf.text("Tên hàng hóa, dịch vụ", 30, 90);
-            pdf.text("Đơn vị tính", 95, 90);
-            pdf.text("Số lượng", 125, 90);
-            pdf.text("Đơn giá", 150, 90);
-            pdf.text("Thành tiền", 180, 90);
+            pdf.text("STT", 10, 70);
+            pdf.text("Tên hàng hóa, dịch vụ", 30, 70);
+            pdf.text("Số lượng", 120, 70);
+            pdf.text("Đơn giá", 150, 70);
+            pdf.text("Thành tiền", 180, 70);
 
-            pdf.line(10, 92, 200, 92); // Đường kẻ ngang
+            pdf.line(10, 72, 200, 72); // Đường kẻ ngang
 
-            // Dữ liệu bảng
-            const items = [
-                {
-                    name: "Thay nhớt",
-                    unit: "Lít",
-                    quantity: 2,
-                    price: 150000,
-                    total: 300000,
-                },
-                {
-                    name: "Sửa phanh",
-                    unit: "Bộ",
-                    quantity: 1,
-                    price: 500000,
-                    total: 500000,
-                },
-            ];
+            let y = 80; // Vị trí dòng đầu tiên
+            if (
+                invoiceData.invoice_type === "Mua xe" ||
+                invoiceData.invoice_type === "Mua phụ tùng"
+            ) {
+                invoiceData.details.forEach((item: any, index: number) => {
+                    pdf.text((index + 1).toString(), 10, y); // STT
+                    pdf.text(
+                        item.motocycle_name || item.accessory_name || "N/A",
+                        30,
+                        y
+                    ); // Tên hàng hóa
+                    pdf.text(item.quantity.toString(), 120, y); // Số lượng
+                    pdf.text(
+                        new Intl.NumberFormat("vi-VN").format(item.unit_price),
+                        150,
+                        y
+                    ); // Đơn giá
+                    pdf.text(
+                        new Intl.NumberFormat("vi-VN").format(
+                            item.unit_price * item.quantity
+                        ),
+                        180,
+                        y
+                    ); // Thành tiền
+                    y += 10; // Tăng vị trí dòng tiếp theo
+                });
+            } else if (invoiceData.invoice_type === "Sửa chữa") {
+                const repairDetails = invoiceData.details;
+                pdf.text("Mô tả sửa chữa:", 10, y);
+                pdf.text(repairDetails.description, 50, y);
+                y += 10;
 
-            let y = 100; // Vị trí dòng đầu tiên
-            items.forEach((item, index) => {
-                pdf.text((index + 1).toString(), 10, y); // STT
-                pdf.text(item.name, 30, y); // Tên hàng hóa
-                pdf.text(item.unit, 100, y); // Đơn vị tính
-                pdf.text(item.quantity.toString(), 130, y, { align: "right" }); // Số lượng
-                pdf.text(
-                    new Intl.NumberFormat("vi-VN").format(item.price),
-                    150,
-                    y
-                ); // Đơn giá
-                pdf.text(
-                    new Intl.NumberFormat("vi-VN").format(item.total),
-                    180,
-                    y
-                ); // Thành tiền
-                y += 10; // Tăng vị trí dòng tiếp theo
-            });
+                repairDetails.accessories.forEach(
+                    (item: any, index: number) => {
+                        pdf.text((index + 1).toString(), 10, y); // STT
+                        pdf.text(item.accessory_name || "N/A", 30, y); // Tên phụ tùng
+                        pdf.text(item.quantity.toString(), 120, y); // Số lượng
+                        pdf.text(
+                            new Intl.NumberFormat("vi-VN").format(
+                                item.unit_price
+                            ),
+                            150,
+                            y
+                        ); // Đơn giá
+                        pdf.text(
+                            new Intl.NumberFormat("vi-VN").format(
+                                item.unit_price * item.quantity
+                            ),
+                            180,
+                            y
+                        ); // Thành tiền
+                        y += 10; // Tăng vị trí dòng tiếp theo
+                    }
+                );
+            }
 
             // Tổng tiền
             pdf.setFontSize(12);
-            pdf.text("Tổng tiền dịch vụ sửa chữa:", 10, y + 10);
             pdf.text(
-                new Intl.NumberFormat("vi-VN").format(
-                    items.reduce((sum, item) => sum + item.total, 0)
-                ),
-                180,
+                `Tổng tiền: ${new Intl.NumberFormat("vi-VN").format(
+                    invoiceData.total_amount
+                )} VNĐ`,
+                10,
                 y + 10
             );
 
-            // Ký tên
-            pdf.text("Người mua hàng", 40, y + 30, { align: "center" });
-            pdf.text("Người bán hàng", 140, y + 30, { align: "center" });
-
             // Lưu file PDF
-            pdf.save(`Invoice_${new Date().getTime()}.pdf`);
+            pdf.save(`Invoice_${invoiceData.invoice_id}.pdf`);
         } catch (error) {
             console.error("Lỗi khi tạo PDF:", error);
         }
     };
 
-    // Render bảng chi tiết cho từng loại hóa đơn
     const renderInvoiceDetails = () => {
-        if (invoiceData.invoiceType === "Mua xe") {
+        if (invoiceData.invoice_type === "Mua xe") {
             return (
                 <Table
-                    dataSource={invoiceData.vehicles}
+                    dataSource={invoiceData.details}
                     columns={[
                         {
+                            title: "Mã xe",
+                            dataIndex: "motocycle_id",
+                            key: "motocycle_id",
+                            render: (value) => (
+                                <Link to={`/products/motorcycle/${value}`}>
+                                    {value}
+                                </Link>
+                            ),
+                        },
+                        {
                             title: "Tên xe",
-                            dataIndex: "name",
-                            key: "name",
+                            dataIndex: "motocycle_name",
+                            key: "motocycle_name",
                         },
                         {
                             title: "Màu sắc",
-                            dataIndex: "color",
-                            key: "color",
+                            dataIndex: "color_name",
+                            key: "color_name",
                         },
                         {
                             title: "Số lượng",
@@ -164,32 +193,38 @@ const InvoiceDetailPage: React.FC = () => {
                         },
                         {
                             title: "Đơn giá (VNĐ)",
-                            dataIndex: "price",
-                            key: "price",
+                            dataIndex: "unit_price",
+                            key: "unit_price",
                             render: (value) =>
                                 new Intl.NumberFormat("vi-VN").format(value),
                         },
                         {
                             title: "Thành tiền (VNĐ)",
-                            dataIndex: "total",
                             key: "total",
-                            render: (value) =>
-                                new Intl.NumberFormat("vi-VN").format(value),
+                            render: (_, record) =>
+                                new Intl.NumberFormat("vi-VN").format(
+                                    record.unit_price * record.quantity
+                                ),
                         },
                     ]}
                     pagination={false}
-                    rowKey="name"
+                    rowKey="motocycle_id"
                 />
             );
-        } else if (invoiceData.invoiceType === "Mua phụ tùng") {
+        } else if (invoiceData.invoice_type === "Mua phụ tùng") {
             return (
                 <Table
-                    dataSource={invoiceData.accessories}
+                    dataSource={invoiceData.details}
                     columns={[
                         {
+                            title: "Mã phụ tùng",
+                            dataIndex: "accessory_id",
+                            key: "accessory_id",
+                        },
+                        {
                             title: "Tên phụ tùng",
-                            dataIndex: "name",
-                            key: "name",
+                            dataIndex: "accessory_name",
+                            key: "accessory_name",
                         },
                         {
                             title: "Số lượng",
@@ -198,45 +233,100 @@ const InvoiceDetailPage: React.FC = () => {
                         },
                         {
                             title: "Đơn giá (VNĐ)",
-                            dataIndex: "price",
-                            key: "price",
+                            dataIndex: "unit_price",
+                            key: "unit_price",
                             render: (value) =>
                                 new Intl.NumberFormat("vi-VN").format(value),
                         },
                         {
                             title: "Thành tiền (VNĐ)",
-                            dataIndex: "total",
                             key: "total",
-                            render: (value) =>
-                                new Intl.NumberFormat("vi-VN").format(value),
+                            render: (_, record) =>
+                                new Intl.NumberFormat("vi-VN").format(
+                                    record.unit_price * record.quantity
+                                ),
                         },
                     ]}
                     pagination={false}
-                    rowKey="name"
+                    rowKey="accessory_id"
                 />
             );
-        } else if (invoiceData.invoiceType === "Sửa chữa") {
+        } else if (invoiceData.invoice_type === "Sửa chữa") {
             return (
-                <Descriptions bordered column={1}>
-                    <Descriptions.Item label="Mã sửa chữa">
-                        <Link
-                            to={`/repair/${invoiceData.repairDetails.repairCode}`}
-                        >
-                            {invoiceData.repairDetails.repairCode}
-                        </Link>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Mô tả">
-                        {invoiceData.repairDetails.description}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Thành tiền (VNĐ)">
-                        {new Intl.NumberFormat("vi-VN").format(
-                            invoiceData.repairDetails.total
-                        )}
-                    </Descriptions.Item>
-                </Descriptions>
+                <>
+                    <Descriptions bordered column={1}>
+                        <Descriptions.Item label="Mã sửa chữa">
+                            <Link
+                                to={`/repairs/${invoiceData.details.repair_id}`}
+                            >
+                                {" "}
+                                {invoiceData.details.repair_id}
+                            </Link>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Mô tả">
+                            {invoiceData.details.description}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Thành tiền (VNĐ)">
+                            {new Intl.NumberFormat("vi-VN").format(
+                                invoiceData.details.cost
+                            )}
+                        </Descriptions.Item>
+                    </Descriptions>
+
+                    <div style={{ marginTop: 24 }}>
+                        <Title level={5}>Danh sách phụ tùng</Title>
+                        <Table
+                            dataSource={invoiceData.details.accessories}
+                            columns={[
+                                {
+                                    title: "Tên phụ tùng",
+                                    dataIndex: "accessory_name",
+                                    key: "accessory_name",
+                                    render: (value) => value || "N/A", // Hiển thị "N/A" nếu không có tên
+                                },
+                                {
+                                    title: "Số lượng",
+                                    dataIndex: "quantity",
+                                    key: "quantity",
+                                },
+                                {
+                                    title: "Đơn giá (VNĐ)",
+                                    dataIndex: "unit_price",
+                                    key: "unit_price",
+                                    render: (value) =>
+                                        new Intl.NumberFormat("vi-VN").format(
+                                            value
+                                        ),
+                                },
+                                {
+                                    title: "Thành tiền (VNĐ)",
+                                    key: "total",
+                                    render: (_, record) =>
+                                        new Intl.NumberFormat("vi-VN").format(
+                                            record.unit_price * record.quantity
+                                        ),
+                                },
+                            ]}
+                            pagination={false}
+                            rowKey={(record, index) => index.toString()} // Sử dụng index làm key nếu không có ID
+                        />
+                    </div>
+                </>
             );
         }
     };
+
+    if (loading) {
+        return (
+            <div style={{ textAlign: "center", padding: 50 }}>
+                <Spin size="large" />
+            </div>
+        );
+    }
+
+    if (!invoiceData) {
+        return null;
+    }
 
     return (
         <div style={{ padding: 24 }}>
@@ -244,27 +334,31 @@ const InvoiceDetailPage: React.FC = () => {
                 <Title level={3}>Chi tiết hóa đơn</Title>
                 <Descriptions bordered column={2}>
                     <Descriptions.Item label="Mã hóa đơn">
-                        {invoiceData.invoiceId}
+                        {invoiceData.invoice_id}
                     </Descriptions.Item>
                     <Descriptions.Item label="Tên khách hàng">
-                        {invoiceData.customerName}
+                        {invoiceData.customer_name}
                     </Descriptions.Item>
                     <Descriptions.Item label="Loại hóa đơn">
-                        {invoiceData.invoiceType}
+                        {invoiceData.invoice_type}
                     </Descriptions.Item>
                     <Descriptions.Item label="Ngày tạo">
-                        {invoiceData.createdDate}
+                        {new Date(invoiceData.invoice_date).toLocaleDateString(
+                            "vi-VN"
+                        )}
                     </Descriptions.Item>
-
                     <Descriptions.Item label="Thuế VAT (%)">
                         {invoiceData.vat}%
                     </Descriptions.Item>
                     <Descriptions.Item label="Chiết khấu (%)">
-                        {invoiceData.discount}%
+                        {new Intl.NumberFormat("vi-VN").format(
+                            invoiceData.discount
+                        )}
+                        %
                     </Descriptions.Item>
                     <Descriptions.Item label="Tổng tiền (VNĐ)">
                         {new Intl.NumberFormat("vi-VN").format(
-                            invoiceData.totalAmount
+                            invoiceData.total_amount
                         )}
                     </Descriptions.Item>
                 </Descriptions>

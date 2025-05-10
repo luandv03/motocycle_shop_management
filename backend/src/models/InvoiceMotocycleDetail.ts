@@ -6,6 +6,8 @@ import {
     DataType,
     ForeignKey,
     BeforeCreate,
+    BeforeBulkCreate,
+    BelongsTo,
 } from "sequelize-typescript";
 import { Invoice } from "./Invoice";
 import { MotocycleColor } from "./MotocycleColor";
@@ -20,9 +22,15 @@ export class InvoiceMotocycleDetail extends Model {
     @Column(DataType.STRING)
     invoice_id!: string;
 
+    @BelongsTo(() => Invoice) // Thêm quan hệ belongsTo
+    invoice!: Invoice;
+
     @ForeignKey(() => MotocycleColor)
     @Column(DataType.STRING)
-    motorbike_color_id!: string;
+    motorcycle_color_id!: string;
+
+    @BelongsTo(() => MotocycleColor) // Thêm quan hệ belongsTo
+    motocycleColor!: MotocycleColor;
 
     @Column(DataType.INTEGER)
     quantity!: number;
@@ -34,9 +42,30 @@ export class InvoiceMotocycleDetail extends Model {
     static async generateInvoiceMotocycleDetailId(
         instance: InvoiceMotocycleDetail
     ) {
-        const count = await InvoiceMotocycleDetail.count();
-        instance.invoiceMotocycleDetail_id = `IMD${(count + 1)
-            .toString()
-            .padStart(3, "0")}`;
+        const maxId = await InvoiceMotocycleDetail.max(
+            "invoiceMotocycleDetail_id"
+        );
+        const currentId =
+            typeof maxId === "string" ? parseInt(maxId.slice(3)) : 0; // Kiểm tra maxId là chuỗi và lấy phần số
+        const nextId = `IMD${(currentId + 1).toString().padStart(3, "0")}`; // Tăng giá trị lên 1
+        instance.invoiceMotocycleDetail_id = nextId;
+    }
+
+    @BeforeBulkCreate
+    static async generateInvoiceMotocycleDetailIds(
+        instances: InvoiceMotocycleDetail[]
+    ) {
+        const maxId = await InvoiceMotocycleDetail.max(
+            "invoiceMotocycleDetail_id"
+        );
+        let currentId =
+            typeof maxId === "string" ? parseInt(maxId.slice(3)) : 0; // Kiểm tra maxId là chuỗi và lấy phần số
+
+        for (const instance of instances) {
+            currentId += 1;
+            instance.invoiceMotocycleDetail_id = `IMD${currentId
+                .toString()
+                .padStart(3, "0")}`; // Tăng giá trị lên 1
+        }
     }
 }

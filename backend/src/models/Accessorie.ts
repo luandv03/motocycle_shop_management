@@ -8,6 +8,7 @@ import {
     HasMany,
 } from "sequelize-typescript";
 import { RepairAccessories } from "./RepairAccessories";
+import { InvoiceAccessorieDetail } from "./InvoiceAccessorieDetail"; // Import InvoiceAccessorieDetail model
 
 @Table({ tableName: "accessorie" })
 export class Accessorie extends Model {
@@ -16,7 +17,7 @@ export class Accessorie extends Model {
     accessory_id!: string;
 
     @Column(DataType.STRING)
-    accessorie_name!: string;
+    accessory_name!: string;
 
     @Column(DataType.INTEGER)
     quantity!: number;
@@ -26,6 +27,9 @@ export class Accessorie extends Model {
 
     @HasMany(() => RepairAccessories)
     repairAccessories!: RepairAccessories[];
+
+    @HasMany(() => InvoiceAccessorieDetail) // Thêm quan hệ hasMany với InvoiceAccessorieDetail
+    invoiceAccessorieDetails!: InvoiceAccessorieDetail[];
 
     @BeforeCreate
     static async generateAccessoryId(instance: Accessorie) {

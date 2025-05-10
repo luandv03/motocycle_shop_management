@@ -17,39 +17,79 @@ export class MotocycleController {
         try {
             const offset = (Number(page) - 1) * Number(limit);
 
-            // Lấy danh sách xe máy kèm thông tin hãng, model và tổng số lượng tồn kho
-            const { count, rows } = await Motocycle.findAndCountAll({
+            // Lấy danh sách xe máy kèm thông tin hãng, model, tổng số lượng tồn kho và chi tiết màu sắc
+            const motocycles = await Motocycle.findAll({
                 limit: Number(limit),
                 offset,
                 include: [
-                    { model: MotocycleModel, include: [{ model: Brand }] },
+                    {
+                        model: MotocycleModel,
+                        include: [{ model: Brand, attributes: ["brand_name"] }],
+                        attributes: ["motocycle_model_name"],
+                    },
                     {
                         model: MotocycleColor,
-                        attributes: [
-                            [
-                                MotocycleColor.sequelize!.fn(
-                                    "SUM",
-                                    MotocycleColor.sequelize!.col("quantity")
-                                ),
-                                "total_quantity",
-                            ],
+                        attributes: ["motocycle_color_id", "quantity", "price"],
+                        include: [
+                            {
+                                model: Color,
+                                attributes: ["color_name", "color_code"],
+                            },
                         ],
                     },
                 ],
+                attributes: [
+                    "motocycle_id",
+                    "motocycle_name",
+                    "status",
+                    [
+                        MotocycleColor.sequelize!.fn(
+                            "SUM",
+                            MotocycleColor.sequelize!.col("quantity")
+                        ),
+                        "total_quantity",
+                    ],
+                ],
                 group: [
                     "Motocycle.motocycle_id",
-                    "MotocycleModel.model_id",
-                    "Brand.brand_id",
+                    "MotocycleModel.motocycle_model_id",
+                    "MotocycleModel->Brand.brand_id",
+                    "MotocycleColor.motocycle_color_id",
+                    "MotocycleColor->Color.color_id",
                 ],
             });
+
+            console.log(motocycles);
+
+            // Xử lý dữ liệu để định dạng đầu ra mong muốn
+            const result = motocycles.map((motocycle: any) => ({
+                motocycle_id: motocycle.motocycle_id,
+                motocycle_name: motocycle.motocycle_name,
+                brand_name: motocycle.MotocycleModel?.Brand?.brand_name,
+                motocycle_model_name:
+                    motocycle.MotocycleModel?.motocycle_model_name,
+                status: motocycle.status,
+                total_quantity: motocycle.dataValues.total_quantity,
+                motocycle_color: motocycle.MotocycleColors.map(
+                    (color: any) => ({
+                        motocycle_color_id: color.motocycle_color_id,
+                        color_name: color.Color?.color_name,
+                        color_code: color.Color?.color_code,
+                        price: color.price,
+                    })
+                ),
+            }));
+
+            // Tính tổng số lượng xe máy
+            const totalMotocycles = await Motocycle.count();
 
             return res.status(200).json({
                 statusCode: 200,
                 message: "Get motocycles successfully",
                 data: {
-                    total: count.length,
-                    pages: Math.ceil(count.length / Number(limit)),
-                    motocycles: rows,
+                    total: totalMotocycles,
+                    pages: Math.ceil(totalMotocycles / Number(limit)),
+                    motocycles: result,
                 },
             });
         } catch (error) {
@@ -413,7 +453,7 @@ export class MotocycleController {
     // get all motocycles
     static async getAllMotocycles(req: Request, res: Response) {
         try {
-            // Lấy danh sách tất cả xe máy (không tính tổng số lượng ở đây)
+            // Lấy danh sách tất cả xe máy (bao gồm thông tin hãng, model và màu sắc)
             const motocycles = await Motocycle.findAll({
                 include: [
                     {
@@ -425,6 +465,16 @@ export class MotocycleController {
                             },
                         ],
                         attributes: ["motocycle_model_name"], // Lấy tên dòng xe
+                    },
+                    {
+                        model: MotocycleColor,
+                        attributes: ["motocycle_color_id", "quantity", "price"], // Lấy thông tin màu sắc
+                        include: [
+                            {
+                                model: Color,
+                                attributes: ["color_name", "color_code"], // Lấy tên và mã màu
+                            },
+                        ],
                     },
                 ],
                 attributes: [
@@ -455,7 +505,7 @@ export class MotocycleController {
                 return map;
             }, {});
 
-            // Kết hợp dữ liệu tổng số lượng vào danh sách xe máy
+            // Kết hợp dữ liệu tổng số lượng và màu sắc vào danh sách xe máy
             const result = motocycles.map((motocycle: any) => ({
                 motocycle_id: motocycle.motocycle_id,
                 motocycle_name: motocycle.motocycle_name,
@@ -464,6 +514,15 @@ export class MotocycleController {
                     motocycle.motocycle_model?.motocycle_model_name,
                 status: motocycle.status,
                 total_quantity: quantityMap[motocycle.motocycle_id] || 0, // Lấy tổng số lượng tồn kho
+                motocycle_colors: motocycle.motocycleColors.map(
+                    (color: any) => ({
+                        motocycle_color_id: color.motocycle_color_id,
+                        color_name: color.Color?.color_name,
+                        color_code: color.Color?.color_code,
+                        quantity: color.quantity,
+                        price: color.price,
+                    })
+                ),
             }));
 
             // Tính tổng số lượng xe máy

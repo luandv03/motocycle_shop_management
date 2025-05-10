@@ -7,9 +7,13 @@ import {
     BeforeCreate,
     ForeignKey,
     BelongsTo,
+    HasMany,
 } from "sequelize-typescript";
 import { Customer } from "./Customer";
 import { PointRule } from "./PointRule";
+import { InvoiceMotocycleDetail } from "./InvoiceMotocycleDetail";
+import { InvoiceRepairDetail } from "./InvoiceRepairDetail";
+import { InvoiceAccessorieDetail } from "./InvoiceAccessorieDetail";
 
 @Table({ tableName: "invoice" })
 export class Invoice extends Model {
@@ -51,6 +55,15 @@ export class Invoice extends Model {
 
     @Column(DataType.STRING)
     invoice_type!: string;
+
+    @HasMany(() => InvoiceMotocycleDetail) // Thêm quan hệ hasMany
+    invoiceMotocycleDetails!: InvoiceMotocycleDetail[];
+
+    @HasMany(() => InvoiceRepairDetail) // Thêm quan hệ hasMany với InvoiceRepairDetail
+    invoiceRepairDetails!: InvoiceRepairDetail[];
+
+    @HasMany(() => InvoiceAccessorieDetail) // Thêm quan hệ hasMany với InvoiceAccessorieDetail
+    invoiceAccessorieDetails!: InvoiceAccessorieDetail[];
 
     @BeforeCreate
     static async generateInvoiceId(instance: Invoice) {

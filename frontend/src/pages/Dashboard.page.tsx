@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Row, Col, Card, Table, Menu, Select, Progress } from "antd";
+import { Row, Col, Card, Table, Select, Progress } from "antd";
 import {
     BarChartOutlined,
     SettingOutlined,
@@ -9,7 +9,60 @@ import {
 import { Column } from "@ant-design/charts";
 
 const DashboardPage: React.FC = () => {
-    const [revenueFilter, setRevenueFilter] = useState("7 ngày gần đây");
+    const [revenueFilter, setRevenueFilter] = useState<
+        "7 ngày gần đây" | "30 ngày gần đây" | "90 ngày gần đây"
+    >("7 ngày gần đây");
+
+    // Fake data cho doanh thu
+    const revenueDataByFilter = {
+        "7 ngày gần đây": [
+            { date: "Thứ 2", revenue: 8000 },
+            { date: "Thứ 3", revenue: 12000 },
+            { date: "Thứ 4", revenue: 15000 },
+            { date: "Thứ 5", revenue: 20000 },
+            { date: "Thứ 6", revenue: 18000 },
+            { date: "Thứ 7", revenue: 22000 },
+            { date: "Chủ nhật", revenue: 25000 },
+        ],
+        "30 ngày gần đây": [
+            { date: "Tuần 1", revenue: 120000 },
+            { date: "Tuần 2", revenue: 150000 },
+            { date: "Tuần 3", revenue: 180000 },
+            { date: "Tuần 4", revenue: 200000 },
+        ],
+        "90 ngày gần đây": [
+            { date: "Tháng 1", revenue: 500000 },
+            { date: "Tháng 2", revenue: 600000 },
+            { date: "Tháng 3", revenue: 700000 },
+        ],
+    };
+
+    // Lấy dữ liệu doanh thu dựa trên bộ lọc
+    const revenueData =
+        revenueDataByFilter[
+            revenueFilter as
+                | "7 ngày gần đây"
+                | "30 ngày gần đây"
+                | "90 ngày gần đây"
+        ];
+
+    const revenueConfig = {
+        data: revenueData,
+        xField: "date",
+        yField: "revenue",
+        label: {
+            position: "middle",
+            style: {
+                fill: "#FFFFFF",
+                opacity: 0.6,
+            },
+        },
+        meta: {
+            revenue: {
+                alias: "Doanh thu (VNĐ)",
+            },
+        },
+    };
 
     // Dữ liệu cho các card
     const stats = [
@@ -42,35 +95,6 @@ const DashboardPage: React.FC = () => {
             percentage: "-3% từ tháng trước",
         },
     ];
-
-    // Dữ liệu cho biểu đồ doanh thu
-    const revenueData = [
-        { date: "Thứ 2", revenue: 8000 },
-        { date: "Thứ 3", revenue: 12000 },
-        { date: "Thứ 4", revenue: 15000 },
-        { date: "Thứ 5", revenue: 20000 },
-        { date: "Thứ 6", revenue: 18000 },
-        { date: "Thứ 7", revenue: 22000 },
-        { date: "Chủ nhật", revenue: 25000 },
-    ];
-
-    const revenueConfig = {
-        data: revenueData,
-        xField: "date",
-        yField: "revenue",
-        label: {
-            position: "middle",
-            style: {
-                fill: "#FFFFFF",
-                opacity: 0.6,
-            },
-        },
-        meta: {
-            revenue: {
-                alias: "Doanh thu (VNĐ)",
-            },
-        },
-    };
 
     // Dữ liệu cho Top sản phẩm bán ra
     const topProducts = [
@@ -125,17 +149,6 @@ const DashboardPage: React.FC = () => {
         { title: "Customer", dataIndex: "customer", key: "customer" },
         { title: "Status", dataIndex: "status", key: "status" },
     ];
-
-    const revenueMenu = (
-        <Menu
-            onClick={(e) => setRevenueFilter(e.key)}
-            items={[
-                { key: "7 ngày gần đây", label: "7 ngày gần đây" },
-                { key: "30 ngày gần đây", label: "30 ngày gần đây" },
-                { key: "90 ngày gần đây", label: "90 ngày gần đây" },
-            ]}
-        />
-    );
 
     return (
         <div style={{ padding: 24 }}>
