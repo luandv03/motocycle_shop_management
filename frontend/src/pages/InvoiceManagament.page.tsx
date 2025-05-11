@@ -18,7 +18,6 @@ import {
 import {
     SearchOutlined,
     EyeOutlined,
-    EditOutlined,
     DeleteOutlined,
     PlusOutlined,
     DollarOutlined,
@@ -68,10 +67,7 @@ const InvoiceManagementPage: React.FC = () => {
                     createdDate: invoice.invoice_date
                         ? moment(invoice.invoice_date)
                         : null,
-                    status:
-                        invoice.status === "pending"
-                            ? "Chưa thanh toán"
-                            : "Đã thanh toán",
+                    status: invoice.status,
                 }));
 
                 setInvoices(formattedInvoices);
@@ -111,36 +107,51 @@ const InvoiceManagementPage: React.FC = () => {
     };
 
     const handleDateRangeChange = (
-        dates: [moment.Moment, moment.Moment] | null
+        dates: [any, any] | null // Không dùng moment nữa
     ) => {
         setSelectedRange(dates);
 
         if (dates) {
             const [start, end] = dates;
+            // Đảm bảo start và end là Date object
+            const startDate = new Date(start);
+            // endDate là cuối ngày
+            const endDate = new Date(end);
+            endDate.setHours(23, 59, 59, 999);
 
-            // Lọc hóa đơn theo khoảng thời gian
-            const filteredInvoices = invoices.filter(
-                (invoice: any) =>
-                    invoice.status === "Đã thanh toán" &&
-                    moment(invoice.createdDate).isBetween(
-                        start,
-                        end,
-                        "day",
-                        "[]"
-                    )
-            );
-
-            // Tính tổng doanh thu theo khoảng thời gian
+            const filteredInvoices = invoices.filter((invoice: any) => {
+                if (invoice.status !== "Đã thanh toán" || !invoice.createdDate)
+                    return false;
+                const invoiceDate = new Date(invoice.createdDate);
+                return invoiceDate >= startDate && invoiceDate <= endDate;
+            });
             const filteredRevenue = filteredInvoices.reduce(
-                (sum: number, invoice: any) => sum + invoice.totalAmount,
+                (sum: number, invoice: any) => {
+                    // Nếu totalAmount là string (có "VND"), lấy số
+                    if (typeof invoice.totalAmount === "string") {
+                        return (
+                            sum +
+                            parseInt(invoice.totalAmount.replace(/\D/g, ""), 10)
+                        );
+                    }
+                    return sum + invoice.totalAmount;
+                },
                 0
             );
-
-            console.log(filteredRevenue);
-
             setFilteredRevenue(filteredRevenue);
         } else {
-            setFilteredRevenue(0);
+            const total = invoices
+                .filter((invoice: any) => invoice.status === "Đã thanh toán")
+                .reduce((sum: number, invoice: any) => {
+                    if (typeof invoice.totalAmount === "string") {
+                        return (
+                            sum +
+                            parseInt(invoice.totalAmount.replace(/\D/g, ""), 10)
+                        );
+                    }
+                    return sum + invoice.totalAmount;
+                }, 0);
+            setFilteredRevenue(total);
         }
     };
 
@@ -171,8 +182,8 @@ const InvoiceManagementPage: React.FC = () => {
             title: "Ngày tạo",
             dataIndex: "createdDate",
             key: "createdDate",
-            render: (date: moment.Moment | null) =>
-                date ? date.format("DD/MM/YYYY") : "N/A",
+            render: (date: string | Date | null) =>
+                date ? new Date(date).toLocaleDateString("vi-VN") : "N/A",
         },
         {
             title: "Trạng thái",
@@ -200,12 +211,6 @@ const InvoiceManagementPage: React.FC = () => {
                             onClick={() =>
                                 navigate(`/invoice/${record.invoiceId}`)
                             }
-                        />
-                    </Tooltip>
-                    <Tooltip title="Sửa">
-                        <EditOutlined
-                            style={{ color: "#52c41a", cursor: "pointer" }}
-                            onClick={() => console.log("Edit", record)}
                         />
                     </Tooltip>
                     <Tooltip title="Xóa">
@@ -305,31 +310,99 @@ const InvoiceManagementPage: React.FC = () => {
             {/* Bảng danh sách hóa đơn */}
             <Table
                 columns={columns}
-                dataSource={invoices.filter((invoice) => {
-                    const matchesSearchText =
-                        invoice.invoiceId
-                            .toLowerCase()
-                            .includes(searchText.toLowerCase()) ||
-                        invoice.customerName
-                            .toLowerCase()
-                            .includes(searchText.toLowerCase()) ||
-                        invoice.invoiceType
-                            .toLowerCase()
-                            .includes(searchText.toLowerCase());
+                dataSource={invoices
+                    .filter((invoice) => {
+                        const matchesSearchText =
+                            invoice.invoiceId
+                                .toLowerCase()
+                                .includes(searchText.toLowerCase()) ||
+                            invoice.customerName
+                                .toLowerCase()
+                                .includes(searchText.toLowerCase()) ||
+                            invoice.invoiceType
+                                .toLowerCase()
+                                .includes(searchText.toLowerCase());
 
-                    const matchesInvoiceType =
-                        filterInvoiceType === null ||
-                        invoice.invoiceType === filterInvoiceType;
+                        const matchesInvoiceType =
+                            filterInvoiceType === null ||
+                            invoice.invoiceType === filterInvoiceType;
 
-                    return matchesSearchText && matchesInvoiceType;
-                })}
+                        // Lọc theo ngày nếu có chọn
+                        const matchesDateRange =
+                            !selectedRange ||
+                            (invoice.createdDate &&
+                                (() => {
+                                    const invoiceDate = new Date(
+                                        invoice.createdDate
+                                    );
+                                    const startDate = new Date(
+                                        selectedRange[0]
+                                    );
+                                    const endDate = new Date(selectedRange[1]);
+                                    endDate.setHours(23, 59, 59, 999);
+                                    return (
+                                        invoiceDate >= startDate &&
+                                        invoiceDate <= endDate
+                                    );
+                                })());
+
+                        return (
+                            matchesSearchText &&
+                            matchesInvoiceType &&
+                            matchesDateRange
+                        );
+                    })
+                    .slice(
+                        (pagination.current - 1) * pagination.pageSize,
+                        pagination.current * pagination.pageSize
+                    )}
                 loading={loading}
                 pagination={{
                     current: pagination.current,
                     pageSize: pagination.pageSize,
                     showSizeChanger: true,
                     pageSizeOptions: ["10", "20", "50"],
-                    total: invoices.length,
+                    // Tổng số bản ghi sau khi lọc
+                    total: invoices.filter((invoice) => {
+                        const matchesSearchText =
+                            invoice.invoiceId
+                                .toLowerCase()
+                                .includes(searchText.toLowerCase()) ||
+                            invoice.customerName
+                                .toLowerCase()
+                                .includes(searchText.toLowerCase()) ||
+                            invoice.invoiceType
+                                .toLowerCase()
+                                .includes(searchText.toLowerCase());
+
+                        const matchesInvoiceType =
+                            filterInvoiceType === null ||
+                            invoice.invoiceType === filterInvoiceType;
+
+                        const matchesDateRange =
+                            !selectedRange ||
+                            (invoice.createdDate &&
+                                (() => {
+                                    const invoiceDate = new Date(
+                                        invoice.createdDate
+                                    );
+                                    const startDate = new Date(
+                                        selectedRange[0]
+                                    );
+                                    const endDate = new Date(selectedRange[1]);
+                                    endDate.setHours(23, 59, 59, 999);
+                                    return (
+                                        invoiceDate >= startDate &&
+                                        invoiceDate <= endDate
+                                    );
+                                })());
+
+                        return (
+                            matchesSearchText &&
+                            matchesInvoiceType &&
+                            matchesDateRange
+                        );
+                    }).length,
                 }}
                 onChange={handleTableChange}
                 bordered
@@ -345,14 +418,11 @@ const InvoiceManagementPage: React.FC = () => {
                         invoiceId: invoice.invoice_id,
                         customerName: invoice.customer.fullname,
                         invoiceType: invoice.invoice_type,
-                        totalAmount: `${invoice.total_amount.toLocaleString()} VND`,
+                        totalAmount: invoice.total_amount,
                         createdDate: new Date(invoice.invoice_date)
                             .toISOString()
                             .split("T")[0],
-                        status:
-                            invoice.status === "pending"
-                                ? "Chưa thanh toán"
-                                : "Đã thanh toán",
+                        status: invoice.status,
                     };
 
                     setInvoices((prevInvoices) => [

@@ -26,7 +26,10 @@ const BrandManagementPage: React.FC = () => {
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+    const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+    const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [selectedBrand, setSelectedBrand] = useState<any>(null);
+    const [editingBrand, setEditingBrand] = useState<any>(null);
     const [data, setData] = useState<any[]>([]); // Dữ liệu danh sách brand
     const [loading, setLoading] = useState(false); // Trạng thái loading khi gọi API
 
@@ -65,7 +68,12 @@ const BrandManagementPage: React.FC = () => {
 
     // Xử lý khi xác nhận xóa
     const handleDelete = () => {
-        message.success(`Đã xóa hãng ${selectedBrand?.name}`);
+        if (selectedBrand) {
+            setData((prev) =>
+                prev.filter((item) => item.id !== selectedBrand.id)
+            );
+            message.success(`Đã xóa hãng ${selectedBrand?.name}`);
+        }
         setIsModalVisible(false);
         setSelectedBrand(null);
     };
@@ -108,6 +116,40 @@ const BrandManagementPage: React.FC = () => {
         setIsAddModalVisible(false);
     };
 
+    // Xử lý khi xem chi tiết
+    const handleView = (record: any) => {
+        setSelectedBrand(record);
+        setIsViewModalVisible(true);
+    };
+
+    // Xử lý khi mở modal chỉnh sửa
+    const handleEdit = (record: any) => {
+        setEditingBrand(record);
+        form.setFieldsValue({ name: record.name });
+        setIsEditModalVisible(true);
+    };
+
+    // Xử lý khi lưu chỉnh sửa
+    const handleSaveEdit = async (values: any) => {
+        // Giả lập cập nhật, thực tế gọi API updateBrand
+        setData((prev) =>
+            prev.map((item) =>
+                item.id === editingBrand.id
+                    ? { ...item, name: values.name }
+                    : item
+            )
+        );
+        message.success("Cập nhật hãng thành công!");
+        setIsEditModalVisible(false);
+        setEditingBrand(null);
+    };
+
+    // Xử lý khi hủy modal chỉnh sửa
+    const handleCancelEdit = () => {
+        setIsEditModalVisible(false);
+        setEditingBrand(null);
+    };
+
     // Xử lý khi thay đổi phân trang
     const handleTableChange = (page: number, pageSize: number) => {
         setPagination({ current: page, pageSize });
@@ -138,13 +180,13 @@ const BrandManagementPage: React.FC = () => {
                 <Space size="middle">
                     <EyeOutlined
                         style={{ color: "#1890ff", cursor: "pointer" }}
-                        onClick={() => console.log("View:", record)}
+                        onClick={() => handleView(record)}
                     />
                     {user?.role_id !== "R003" && (
                         <>
                             <EditOutlined
                                 style={{ color: "#52c41a", cursor: "pointer" }}
-                                onClick={() => console.log("Edit:", record)}
+                                onClick={() => handleEdit(record)}
                             />
                             <DeleteOutlined
                                 style={{ color: "#ff4d4f", cursor: "pointer" }}
@@ -187,7 +229,7 @@ const BrandManagementPage: React.FC = () => {
             <Table
                 columns={columns}
                 dataSource={data}
-                loading={loading} // Hiển thị trạng thái loading khi gọi API
+                loading={loading}
                 pagination={{
                     current: pagination.current,
                     pageSize: pagination.pageSize,
@@ -197,7 +239,6 @@ const BrandManagementPage: React.FC = () => {
                     onChange: handleTableChange,
                 }}
             />
-
             {/* Modal xác nhận xóa */}
             <Modal
                 title="Xác nhận xóa"
@@ -212,7 +253,57 @@ const BrandManagementPage: React.FC = () => {
                     <strong>{selectedBrand?.name}</strong> không?
                 </p>
             </Modal>
-
+            {/* Modal xem chi tiết */}
+            <Modal
+                title="Thông tin hãng"
+                visible={isViewModalVisible}
+                onCancel={() => setIsViewModalVisible(false)}
+                footer={null}
+            >
+                <p>
+                    <b>Mã hãng:</b> {selectedBrand?.id}
+                </p>
+                <p>
+                    <b>Tên hãng:</b> {selectedBrand?.name}
+                </p>
+            </Modal>
+            {/* Modal chỉnh sửa hãng */}
+            <Modal
+                title="Chỉnh sửa hãng"
+                visible={isEditModalVisible}
+                onCancel={handleCancelEdit}
+                footer={null}
+            >
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleSaveEdit}
+                    initialValues={{ name: editingBrand?.name }}
+                >
+                    <Form.Item
+                        label="Tên hãng"
+                        name="name"
+                        rules={[
+                            {
+                                required: true,
+                                message: "Vui lòng nhập tên hãng!",
+                            },
+                        ]}
+                    >
+                        <Input placeholder="Nhập tên hãng" />
+                    </Form.Item>
+                    <Row justify="end" gutter={16}>
+                        <Col>
+                            <Button onClick={handleCancelEdit}>Hủy</Button>
+                        </Col>
+                        <Col>
+                            <Button type="primary" htmlType="submit">
+                                Lưu
+                            </Button>
+                        </Col>
+                    </Row>
+                </Form>
+            </Modal>
             {/* Modal thêm hãng mới */}
             <Modal
                 title="Thêm hãng mới"

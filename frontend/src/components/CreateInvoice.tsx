@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import QRCode from "react-qr-code";
 import {
     Button,
     Input,
@@ -16,6 +17,7 @@ import { getAllMotocycles } from "../services/motocycle.service";
 import { getAllAccessories } from "../services/product.service";
 import { getAllRepairs } from "../services/repair.service";
 import { createInvoice } from "../services/invoice.service";
+import axios from "axios";
 
 const { Option } = Select;
 
@@ -240,8 +242,8 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                     payment_method: "Tiền mặt",
                     status:
                         values.paymentMethod === "Tiền mặt"
-                            ? "done"
-                            : "pending",
+                            ? "Đã thanh toán"
+                            : "Chưa thanh toán",
                     invoice_date: new Date().toISOString().split("T")[0],
                 };
             } else if (invoiceType === "Mua phụ tùng") {
@@ -261,8 +263,8 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                     payment_method: "Tiền mặt",
                     status:
                         values.paymentMethod === "Tiền mặt"
-                            ? "done"
-                            : "pending",
+                            ? "Đã thanh toán"
+                            : "Chưa thanh toán",
                     invoice_date: new Date().toISOString().split("T")[0],
                 };
             } else if (invoiceType === "Sửa chữa") {
@@ -276,8 +278,8 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                     payment_method: "Tiền mặt",
                     status:
                         values.paymentMethod === "Tiền mặt"
-                            ? "done"
-                            : "pending",
+                            ? "Đã thanh toán"
+                            : "Chưa thanh toán",
                     invoice_date: new Date().toISOString().split("T")[0],
                 };
             }
@@ -295,19 +297,44 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                     const popupWinHeight = 600;
                     const left = (screen.width - popupWinWidth) / 2;
                     const top = (screen.height - popupWinHeight) / 4;
-                    const paymentUrl = `http://localhost:5000/api/payments/momo/create_payment_url?total_mount=${values.totalAmount}&invoice_id=${res.data.invoice_id}`;
-                    const modalWindow = window.open(
-                        paymentUrl,
-                        "_blank",
-                        `resizable=yes, width=${popupWinWidth},height=${popupWinHeight}, top=${top}, left=${left}`
-                    );
-                    if (!modalWindow) {
-                        notification.error({
-                            message: "Không thể mở cửa sổ thanh toán",
-                            description:
-                                "Vui lòng kiểm tra cài đặt trình duyệt của bạn.",
+                    const paymentUrl: string = `http://localhost:5000/api/payments/momo/create_payment_url?total_mount=${values.totalAmount}&invoice_id=${res.data.invoice_id}`;
+                    const res2 = await axios
+                        .get(paymentUrl)
+                        .then((res) => {
+                            return res.data;
+                        })
+                        .catch((err) => {
+                            console.log(err);
+                        });
+
+                    // ...trong handleCreateInvoice:
+                    if (res2.statusCode == 200) {
+                        const paymentUrl = res2.data;
+                        Modal.info({
+                            title: "Quét mã QR để thanh toán",
+                            content: (
+                                <div style={{ textAlign: "center" }}>
+                                    <QRCode value={paymentUrl} size={256} />
+                                </div>
+                            ),
+                            width: 350,
+                            okButtonProps: { style: { display: "none" } }, // Ẩn nút OK
+                            closable: true, // Hiển thị dấu X để đóng
                         });
                     }
+
+                    // const modalWindow = window.open(
+                    //     paymentUrl,
+                    //     "_blank",
+                    //     `resizable=yes, width=${popupWinWidth},height=${popupWinHeight}, top=${top}, left=${left}`
+                    // );
+                    // if (!modalWindow) {
+                    //     notification.error({
+                    //         message: "Không thể mở cửa sổ thanh toán",
+                    //         description:
+                    //             "Vui lòng kiểm tra cài đặt trình duyệt của bạn.",
+                    //     });
+                    // }
                 }
 
                 setIsModalVisible(false);
@@ -323,6 +350,8 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                         )?.fullname,
                     },
                 };
+
+                console.log("New invoice:", newInvoice);
 
                 updateInvoiceList(newInvoice); // Cập nhật danh sách hóa đơn
 

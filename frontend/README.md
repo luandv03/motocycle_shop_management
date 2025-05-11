@@ -1,23 +1,25 @@
+admin 12345678
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-    Table,
-    Button,
-    Input,
-    Row,
-    Col,
-    Space,
-    Tooltip,
-    Popconfirm,
-    Select,
-    message,
+Table,
+Button,
+Input,
+Row,
+Col,
+Space,
+Tooltip,
+Popconfirm,
+Select,
+message,
 } from "antd";
 import {
-    SearchOutlined,
-    EyeOutlined,
-    EditOutlined,
-    DeleteOutlined,
-    PlusOutlined,
+SearchOutlined,
+EyeOutlined,
+EditOutlined,
+DeleteOutlined,
+PlusOutlined,
 } from "@ant-design/icons";
 import { getAllInvoices } from "../services/invoice.service";
 import CreateInvoice from "../components/CreateInvoice";
@@ -26,13 +28,13 @@ const { Option } = Select;
 const { Search } = Input;
 
 const InvoiceManagementPage: React.FC = () => {
-    const navigate = useNavigate();
-    const [searchText, setSearchText] = useState("");
-    const [filterInvoiceType, setFilterInvoiceType] = useState<string | null>(
-        null
-    );
-    const [invoices, setInvoices] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
+const navigate = useNavigate();
+const [searchText, setSearchText] = useState("");
+const [filterInvoiceType, setFilterInvoiceType] = useState<string | null>(
+null
+);
+const [invoices, setInvoices] = useState<any[]>([]);
+const [loading, setLoading] = useState(false);
 
     const [pagination, setPagination] = useState({
         current: 1,
@@ -261,6 +263,7 @@ const InvoiceManagementPage: React.FC = () => {
             />
         </div>
     );
+
 };
 
 export default InvoiceManagementPage;

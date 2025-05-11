@@ -38,12 +38,16 @@ const PointManagementPage: React.FC = () => {
     const [isViewModalVisible, setIsViewModalVisible] = useState(false); // Modal Xem
     const [editingRule, setEditingRule] = useState<any>(null);
     const [viewingRule, setViewingRule] = useState<any>(null); // Quy tắc đang xem
+    const [loading, setLoading] = useState(false);
+
     const [form] = Form.useForm();
 
     // Gọi API để lấy danh sách point rules
     const fetchPointRules = async () => {
         try {
+            setLoading(true);
             const response = await getAllPointRules();
+            setLoading(false);
             const formattedData = response.points.map((rule: any) => ({
                 key: rule.point_rule_id,
                 ruleId: rule.point_rule_id,
@@ -55,6 +59,7 @@ const PointManagementPage: React.FC = () => {
             setData(formattedData);
             setFilteredData(formattedData); // Khởi tạo dữ liệu hiển thị
         } catch (error: any) {
+            setLoading(false);
             message.error(
                 error.message || "Không thể lấy danh sách point rules!"
             );
@@ -247,6 +252,7 @@ const PointManagementPage: React.FC = () => {
             {/* Bảng danh sách quy tắc điểm */}
             <Table
                 columns={columns}
+                loading={loading}
                 dataSource={filteredData}
                 pagination={{
                     pageSize: 10,

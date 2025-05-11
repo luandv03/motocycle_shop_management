@@ -44,7 +44,7 @@ const PartManagementPage: React.FC = () => {
                 (item: any, index: number) => ({
                     key: index.toString(),
                     id: item.accessory_id,
-                    name: item.accessorie_name,
+                    name: item.accessory_name,
                     quantity: item.quantity,
                     price: `${item.price.toLocaleString()} VND`,
                 })
@@ -158,8 +158,8 @@ const PartManagementPage: React.FC = () => {
 
                 console.log("newPart", newPart);
 
-                setData([...data, newPart]);
-                setFilteredData([...filteredData, newPart]);
+                setData([newPart, ...data]);
+                setFilteredData([newPart, ...filteredData]);
                 setIsAddModalVisible(false);
                 form.resetFields(); // Reset form sau khi thêm thành công
             }

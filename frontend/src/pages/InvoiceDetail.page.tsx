@@ -8,23 +8,29 @@ import {
     Button,
     Spin,
     notification,
+    Select,
 } from "antd";
+import { EditOutlined } from "@ant-design/icons";
 import jsPDF from "jspdf";
 import { encode } from "base64-arraybuffer";
-import { getInvoiceById } from "../services/invoice.service";
+import { getInvoiceById, updateInvoice } from "../services/invoice.service";
 
+const { Option } = Select;
 const { Title } = Typography;
 
 const InvoiceDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>(); // Lấy ID từ URL
     const [invoiceData, setInvoiceData] = useState<any>(null); // Dữ liệu hóa đơn
     const [loading, setLoading] = useState<boolean>(true); // Trạng thái loading
+    const [isEditingStatus, setIsEditingStatus] = useState(false);
+    const [statusValue, setStatusValue] = useState<string>("");
 
     useEffect(() => {
         const fetchInvoiceDetails = async () => {
             try {
                 setLoading(true);
                 const data = await getInvoiceById(id!); // Gọi API lấy chi tiết hóa đơn
+                console.log("Invoice data:", data.status);
                 setInvoiceData(data);
             } catch (error: any) {
                 notification.error({
@@ -39,6 +45,34 @@ const InvoiceDetailPage: React.FC = () => {
 
         fetchInvoiceDetails();
     }, [id]);
+
+    const handleSaveStatus = async () => {
+        try {
+            // Gọi API cập nhật trạng thái ở đây nếu có
+            const updatedInvoice = await updateInvoice(
+                invoiceData.invoice_id,
+                statusValue
+            );
+            if (updatedInvoice.statusCode !== 200) {
+                return notification.error({
+                    message: "Lỗi",
+                    description: "Không thể cập nhật trạng thái!",
+                });
+            }
+            // Cập nhật trạng thái trong state
+            setInvoiceData({ ...invoiceData, status: statusValue });
+            setIsEditingStatus(false);
+            notification.success({
+                message: "Thành công",
+                description: "Cập nhật trạng thái thành công!",
+            });
+        } catch (error) {
+            notification.error({
+                message: "Lỗi",
+                description: "Không thể cập nhật trạng thái!",
+            });
+        }
+    };
 
     const exportToPDF = async () => {
         const pdf = new jsPDF("p", "mm", "a4");
@@ -359,6 +393,52 @@ const InvoiceDetailPage: React.FC = () => {
                     <Descriptions.Item label="Tổng tiền (VNĐ)">
                         {new Intl.NumberFormat("vi-VN").format(
                             invoiceData.total_amount
+                        )}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Trạng thái">
+                        {isEditingStatus ? (
+                            <>
+                                <Select
+                                    value={statusValue}
+                                    style={{ width: 150, marginRight: 8 }}
+                                    onChange={setStatusValue}
+                                >
+                                    <Option value="Đã thanh toán">
+                                        Đã thanh toán
+                                    </Option>
+                                    <Option value="Chưa thanh toán">
+                                        Chưa thanh toán
+                                    </Option>
+                                </Select>
+                                <Button
+                                    type="primary"
+                                    size="small"
+                                    onClick={handleSaveStatus}
+                                >
+                                    Lưu
+                                </Button>
+                                <Button
+                                    size="small"
+                                    style={{ marginLeft: 8 }}
+                                    onClick={() => {
+                                        setIsEditingStatus(false);
+                                        setStatusValue(invoiceData.status);
+                                    }}
+                                >
+                                    Hủy
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                {invoiceData.status}
+                                <Button
+                                    type="link"
+                                    size="small"
+                                    style={{ marginLeft: 8, padding: 0 }}
+                                    onClick={() => setIsEditingStatus(true)}
+                                    icon={<EditOutlined />}
+                                />
+                            </>
                         )}
                     </Descriptions.Item>
                 </Descriptions>

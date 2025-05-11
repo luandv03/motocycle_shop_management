@@ -65,3 +65,17 @@ export const getInvoiceById = async (id: string) => {
         );
     }
 };
+
+// 3. Cập nhật hóa đơn
+export const updateInvoice = async (id: string, status: string) => {
+    try {
+        const response = await API.put(`/api/invoices/${id}`, { status });
+        return response.data; // Trả về dữ liệu hóa đơn đã cập nhật
+    } catch (error: any) {
+        throw (
+            error.response?.data || {
+                message: "Không thể cập nhật hóa đơn!",
+            }
+        );
+    }
+};

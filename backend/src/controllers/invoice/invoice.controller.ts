@@ -327,4 +327,32 @@ export class InvoiceController {
             });
         }
     }
+
+    static async updateStatusInvoice(req: Request, res: Response) {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        try {
+            const invoice = await Invoice.findByPk(id);
+            if (!invoice) {
+                return res.status(404).json({
+                    message: "Invoice not found",
+                });
+            }
+
+            invoice.status = status;
+            await invoice.save();
+
+            return res.status(200).json({
+                statusCode: 200,
+                message: "Invoice status updated successfully",
+                data: invoice,
+            });
+        } catch (error) {
+            console.error("Error updating invoice status:", error);
+            return res.status(500).json({
+                message: "Internal server error",
+            });
+        }
+    }
 }

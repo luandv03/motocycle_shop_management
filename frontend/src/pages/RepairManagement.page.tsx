@@ -207,6 +207,14 @@ const RepairManagementPage: React.FC = () => {
         },
     ];
 
+    const filteredRepairs = repairs.filter(
+        (repair) =>
+            repair.vehicle.toLowerCase().includes(searchText.toLowerCase()) ||
+            repair.customer.fullname
+                .toLowerCase()
+                .includes(searchText.toLowerCase())
+    );
+
     return (
         <div style={{ padding: 24 }}>
             {/* Thanh tìm kiếm */}
@@ -236,19 +244,14 @@ const RepairManagementPage: React.FC = () => {
             {/* Bảng danh sách sửa chữa */}
             <Table
                 columns={columns}
-                dataSource={repairs.filter(
-                    (repair) =>
-                        repair.vehicle
-                            .toLowerCase()
-                            .includes(searchText.toLowerCase()) ||
-                        repair.customer
-                            .toLowerCase()
-                            .includes(searchText.toLowerCase())
+                dataSource={filteredRepairs.slice(
+                    (pagination.current - 1) * pagination.pageSize,
+                    pagination.current * pagination.pageSize
                 )}
                 pagination={{
                     current: pagination.current,
                     pageSize: pagination.pageSize,
-                    total: pagination.total,
+                    total: filteredRepairs.length,
                     showSizeChanger: true,
                     pageSizeOptions: ["10", "20", "50"],
                 }}

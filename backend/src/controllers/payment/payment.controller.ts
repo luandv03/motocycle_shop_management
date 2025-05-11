@@ -99,7 +99,13 @@ export class PaymentController {
 
                     console.log("Response: ", da.payUrl);
 
-                    response.redirect(da.payUrl);
+                    response.status(200).json({
+                        statusCode: 200,
+                        message: "SUCCESS",
+                        data: da.payUrl,
+                    });
+
+                    // response.redirect(da.payUrl);
                 });
                 res.on("end", () => {
                     console.log("No more data in response.");
@@ -148,7 +154,7 @@ export class PaymentController {
             }
 
             // Cập nhật trạng thái hóa đơn thành "Đã thanh toán"
-            invoice.status = "done";
+            invoice.status = "Đã thanh toán";
             await invoice.save();
 
             res.render("success_momo", { code: resultCode });

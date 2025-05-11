@@ -30,7 +30,6 @@ const { Option } = Select;
 const ModelManagementPage: React.FC = () => {
     const { user } = useAuth(); // Lấy thông tin người dùng từ AuthProvider
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
-    const [isModalVisible, setIsModalVisible] = useState(false);
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [selectedModel, setSelectedModel] = useState<any>(null);
     const [selectedBrand, setSelectedBrand] = useState<string>("all");
@@ -38,6 +37,9 @@ const ModelManagementPage: React.FC = () => {
     const [filteredData, setFilteredData] = useState<any[]>([]);
     const [brands, setBrands] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+    const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+    const [editingModel, setEditingModel] = useState<any>(null);
 
     const [form] = Form.useForm();
 
@@ -113,6 +115,78 @@ const ModelManagementPage: React.FC = () => {
         setPagination({ current: page, pageSize });
     };
 
+    // Xử lý xem chi tiết
+    const handleView = (record: any) => {
+        setSelectedModel(record);
+        setIsViewModalVisible(true);
+    };
+
+    // Xử lý mở modal chỉnh sửa
+    const handleEdit = (record: any) => {
+        setEditingModel(record);
+        form.setFieldsValue({
+            model: record.model,
+            brand: brands.find((b) => b.brand_name === record.brand)?.brand_id,
+        });
+        setIsEditModalVisible(true);
+    };
+
+    // Xử lý lưu chỉnh sửa
+    const handleSaveEdit = async (values: any) => {
+        setData((prev) =>
+            prev.map((item) =>
+                item.key === editingModel.key
+                    ? {
+                          ...item,
+                          model: values.model,
+                          brand: brands.find((b) => b.brand_id === values.brand)
+                              ?.brand_name,
+                      }
+                    : item
+            )
+        );
+        setFilteredData((prev) =>
+            prev.map((item) =>
+                item.key === editingModel.key
+                    ? {
+                          ...item,
+                          model: values.model,
+                          brand: brands.find((b) => b.brand_id === values.brand)
+                              ?.brand_name,
+                      }
+                    : item
+            )
+        );
+        message.success("Cập nhật dòng xe thành công!");
+        setIsEditModalVisible(false);
+        setEditingModel(null);
+    };
+
+    // Xử lý hủy modal chỉnh sửa
+    const handleCancelEdit = () => {
+        setIsEditModalVisible(false);
+        setEditingModel(null);
+    };
+
+    // Xử lý xóa model
+    const handleDelete = (record: any) => {
+        Modal.confirm({
+            title: "Xác nhận xóa",
+            content: `Bạn có chắc chắn muốn xóa dòng xe "${record.model}" không?`,
+            okText: "Xóa",
+            cancelText: "Hủy",
+            onOk: () => {
+                setData((prev) =>
+                    prev.filter((item) => item.key !== record.key)
+                );
+                setFilteredData((prev) =>
+                    prev.filter((item) => item.key !== record.key)
+                );
+                message.success("Đã xóa dòng xe thành công!");
+            },
+        });
+    };
+
     // Gọi API khi component được mount
     useEffect(() => {
         fetchBrands();
@@ -142,18 +216,17 @@ const ModelManagementPage: React.FC = () => {
                 <Space size="middle">
                     <EyeOutlined
                         style={{ color: "#1890ff", cursor: "pointer" }}
-                        onClick={() => console.log("View:", record)}
+                        onClick={() => handleView(record)}
                     />
                     {user?.role_id !== "R003" && (
                         <>
-                            {" "}
                             <EditOutlined
                                 style={{ color: "#52c41a", cursor: "pointer" }}
-                                onClick={() => console.log("Edit:", record)}
+                                onClick={() => handleEdit(record)}
                             />
                             <DeleteOutlined
                                 style={{ color: "#ff4d4f", cursor: "pointer" }}
-                                onClick={() => console.log("Delete:", record)}
+                                onClick={() => handleDelete(record)}
                             />
                         </>
                     )}
@@ -219,7 +292,85 @@ const ModelManagementPage: React.FC = () => {
                     onChange: handleTableChange,
                 }}
             />
-
+            {/* Modal xem chi tiết */}
+            <Modal
+                title="Thông tin dòng xe"
+                visible={isViewModalVisible}
+                onCancel={() => setIsViewModalVisible(false)}
+                footer={null}
+            >
+                <p>
+                    <b>Tên dòng xe:</b> {selectedModel?.model}
+                </p>
+                <p>
+                    <b>Hãng:</b> {selectedModel?.brand}
+                </p>
+            </Modal>
+            {/* Modal chỉnh sửa dòng xe */}
+            <Modal
+                title="Chỉnh sửa dòng xe"
+                visible={isEditModalVisible}
+                onCancel={handleCancelEdit}
+                footer={null}
+            >
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleSaveEdit}
+                    initialValues={{
+                        model: editingModel?.model,
+                        brand: brands.find(
+                            (b) => b.brand_name === editingModel?.brand
+                        )?.brand_id,
+                    }}
+                >
+                    <Form.Item
+                        label="Tên dòng xe"
+                        name="model"
+                        rules={[
+                            {
+                                required: true,
+                                message: "Vui lòng nhập tên dòng xe!",
+                            },
+                        ]}
+                    >
+                        <Input placeholder="Nhập tên dòng xe" />
+                    </Form.Item>
+                    <Form.Item
+                        label="Hãng xe"
+                        name="brand"
+                        rules={[
+                            {
+                                required: true,
+                                message: "Vui lòng chọn hãng xe!",
+                            },
+                        ]}
+                    >
+                        <Select placeholder="Chọn hãng xe">
+                            {brands
+                                .filter((brand) => brand?.brand_id !== "all")
+                                .map((brand) => (
+                                    <Option
+                                        key={brand.brand_id}
+                                        value={brand.brand_id}
+                                    >
+                                        {brand.brand_name}
+                                    </Option>
+                                ))}
+                        </Select>
+                    </Form.Item>
+                    <Row justify="end" gutter={16}>
+                        <Col>
+                            <Button onClick={handleCancelEdit}>Hủy</Button>
+                        </Col>
+                        <Col>
+                            <Button type="primary" htmlType="submit">
+                                Lưu
+                            </Button>
+                        </Col>
+                    </Row>
+                </Form>
+            </Modal>
             {/* Modal thêm dòng xe mới */}
             <Modal
                 title="Thêm dòng xe mới"
