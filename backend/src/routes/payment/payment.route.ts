@@ -15,4 +15,10 @@ paymentRoutes.get(
 // momo pay url
 paymentRoutes.get("/momo/return_url", paymentController.paymentWithMomoReturn);
 
+// Kiểm tra trạng thái giao dịch MoMo
+paymentRoutes.get(
+    "/momo/check_status",
+    paymentController.checkMomoTransactionStatus
+);
+
 export default paymentRoutes;

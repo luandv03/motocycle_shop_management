@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import QRCode from "react-qr-code";
 import {
     Button,
@@ -18,6 +18,7 @@ import { getAllAccessories } from "../services/product.service";
 import { getAllRepairs } from "../services/repair.service";
 import { createInvoice } from "../services/invoice.service";
 import axios from "axios";
+import { io, Socket } from "socket.io-client";
 
 const { Option } = Select;
 
@@ -127,18 +128,91 @@ interface InvoiceManagementPageProps {
     isModalVisible: boolean;
     setIsModalVisible: (visible: boolean) => void;
     updateInvoiceList: (invoice: any) => void;
+    handleChangeStatusInvoice: (invoiceId: string) => void;
 }
 
 const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
     isModalVisible,
     setIsModalVisible,
     updateInvoiceList,
+    handleChangeStatusInvoice,
 }) => {
     const [form] = Form.useForm();
     const [customers, setCustomers] = useState<any[]>([]);
     const [motocycles, setMotocycles] = useState<any[]>([]);
     const [accessories, setAccessories] = useState<any[]>([]);
     const [repairs, setRepairs] = useState<any[]>([]);
+    const [qrModalVisible, setQrModalVisible] = useState<boolean>(false);
+    const [qrPaymentUrl, setQrPaymentUrl] = useState<string>("");
+    const [currentInvoiceId, setCurrentInvoiceId] = useState<string>("");
+    const [paymentInProcess, setPaymentInProcess] = useState<boolean>(false);
+    const [paymentCheckInterval, setPaymentCheckInterval] =
+        useState<NodeJS.Timeout | null>(null);
+
+    // Socket.IO reference
+    const socketRef = useRef<Socket | null>(null);
+
+    useEffect(() => {
+        // Connect to Socket.IO server
+        socketRef.current = io("http://localhost:5000", {
+            transports: ["websocket", "polling"], // Try forcing transport methods
+            reconnection: true,
+            reconnectionAttempts: 5,
+        });
+
+        console.log("Attempting Socket.IO connection");
+
+        socketRef.current.on("connect", () => {
+            console.log("Socket.IO connected!", socketRef.current.id);
+        });
+
+        socketRef.current.on("connect_error", (err) => {
+            console.error("Socket.IO connection error:", err);
+        });
+
+        // Set up listener for payment status
+        socketRef.current.on("payment_status", (data) => {
+            console.log("Payment status received:", data);
+
+            setPaymentInProcess(false);
+
+            if (data.invoiceId === currentInvoiceId) {
+                if (data.success) {
+                    notification.success({
+                        message: "Thanh toán thành công",
+                        description:
+                            "Đơn hàng của bạn đã được thanh toán thành công.",
+                        placement: "topRight",
+                    });
+
+                    // Close QR code modal
+                    setQrModalVisible(false);
+                    setPaymentInProcess(false);
+                } else {
+                    notification.error({
+                        message: "Thanh toán thất bại",
+                        description:
+                            data.message || "Đã xảy ra lỗi khi thanh toán.",
+                        placement: "topRight",
+                    });
+                    // Close QR code modal
+                    setQrModalVisible(false);
+                    setPaymentInProcess(false);
+                }
+            }
+        });
+
+        // Clean up on component unmount
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
+            // Clear any payment check intervals when unmounting
+            if (paymentCheckInterval) {
+                clearInterval(paymentCheckInterval);
+            }
+        };
+    }, [currentInvoiceId, updateInvoiceList, paymentCheckInterval]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -165,6 +239,73 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
 
         fetchData();
     }, []);
+
+    // Function to start polling for payment status
+    const startPaymentStatusPolling = (invoiceId: string) => {
+        // Clear any existing intervals
+        if (paymentCheckInterval) {
+            clearInterval(paymentCheckInterval);
+        }
+
+        // Check immediately once
+        checkPaymentStatus(invoiceId);
+
+        // Then set up interval to check every 5 seconds
+        const interval = setInterval(() => {
+            checkPaymentStatus(invoiceId);
+        }, 5000); // 5 seconds
+
+        setPaymentCheckInterval(interval);
+
+        // Stop polling after 3 minutes (as a safety measure)
+        setTimeout(() => {
+            if (paymentCheckInterval) {
+                clearInterval(paymentCheckInterval);
+                setPaymentCheckInterval(null);
+            }
+        }, 3 * 60 * 1000); // 3 minutes
+    };
+
+    // Function to check payment status via API
+    const checkPaymentStatus = async (invoiceId: string) => {
+        try {
+            const response = await axios.get(
+                `http://localhost:5000/api/payments/momo/check_status?invoice_id=${invoiceId}`
+            );
+
+            console.log("Payment status check response:", response.data);
+
+            if (response.data.status === "success" && response.data.paid) {
+                // Stop polling if payment is successful
+                if (paymentCheckInterval) {
+                    clearInterval(paymentCheckInterval);
+                    setPaymentCheckInterval(null);
+                }
+
+                // Update UI if not already updated by Socket.IO
+                if (paymentInProcess) {
+                    handleChangeStatusInvoice(invoiceId);
+
+                    notification.success({
+                        message: "Thanh toán thành công",
+                        description:
+                            "Đơn hàng của bạn đã được thanh toán thành công.",
+                        placement: "topRight",
+                    });
+
+                    setQrModalVisible(false);
+                    setPaymentInProcess(false);
+
+                    // updateInvoiceList({
+                    //     invoice_id: invoiceId,
+                    //     status: "Đã thanh toán",
+                    // });
+                }
+            }
+        } catch (error) {
+            console.error("Error checking payment status:", error);
+        }
+    };
 
     const handleCreateInvoice = async () => {
         try {
@@ -293,11 +434,13 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
 
             if (res.statusCode == 201) {
                 if (values.paymentMethod === "Chuyển khoản") {
-                    const popupWinWidth = 800;
-                    const popupWinHeight = 600;
-                    const left = (screen.width - popupWinWidth) / 2;
-                    const top = (screen.height - popupWinHeight) / 4;
-                    const paymentUrl: string = `http://localhost:5000/api/payments/momo/create_payment_url?total_mount=${values.totalAmount}&invoice_id=${res.data.invoice_id}`;
+                    const invoiceId = res.data.invoice_id;
+                    setCurrentInvoiceId(invoiceId);
+                    setPaymentInProcess(true);
+
+                    const paymentUrl: string = `http://localhost:5000/api/payments/momo/create_payment_url?total_mount=${Math.ceil(
+                        values.totalAmount
+                    )}&invoice_id=${res.data.invoice_id}`;
                     const res2 = await axios
                         .get(paymentUrl)
                         .then((res) => {
@@ -306,37 +449,51 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                         .catch((err) => {
                             console.log(err);
                         });
-
-                    // ...trong handleCreateInvoice:
                     if (res2.statusCode == 200) {
                         const paymentUrl = res2.data;
-                        Modal.info({
-                            title: "Quét mã QR để thanh toán",
-                            content: (
-                                <div style={{ textAlign: "center" }}>
-                                    <QRCode value={paymentUrl} size={256} />
-                                </div>
-                            ),
-                            width: 350,
-                            okButtonProps: { style: { display: "none" } }, // Ẩn nút OK
-                            closable: true, // Hiển thị dấu X để đóng
-                        });
+                        setQrPaymentUrl(paymentUrl);
+
+                        // Display QR code modal
+                        setQrModalVisible(true);
+
+                        // Start polling for payment status
+                        startPaymentStatusPolling(invoiceId);
+
+                        // Find product info and total amount
+                        const totalAmount = form.getFieldValue("totalAmount");
+                        const formattedAmount = new Intl.NumberFormat("vi-VN", {
+                            style: "currency",
+                            currency: "VND",
+                        }).format(totalAmount);
+
+                        let itemsInfo = "";
+                        const invoiceType = form.getFieldValue("invoiceType");
+
+                        if (invoiceType === "Mua xe") {
+                            const motocycles =
+                                form.getFieldValue("motocycles") || [];
+                            itemsInfo = motocycles
+                                .map((item: any) => {
+                                    // Tìm thông tin xe dựa trên ID
+                                    const moto = motocycles.find(
+                                        (m: any) =>
+                                            m.motocycle?.motocycle_id ===
+                                                item.motocycle ||
+                                            m.motocycle === item.motocycle
+                                    );
+                                    return moto?.motocycle_name || "Xe máy";
+                                })
+                                .join(", ");
+                        } else if (invoiceType === "Mua phụ tùng") {
+                            itemsInfo = "Phụ tùng xe máy";
+                        } else if (invoiceType === "Sửa chữa") {
+                            itemsInfo = "Dịch vụ sửa chữa";
+                        }
+
+                        // The rest of the QR modal content will be rendered separately
                     }
-
-                    // const modalWindow = window.open(
-                    //     paymentUrl,
-                    //     "_blank",
-                    //     `resizable=yes, width=${popupWinWidth},height=${popupWinHeight}, top=${top}, left=${left}`
-                    // );
-                    // if (!modalWindow) {
-                    //     notification.error({
-                    //         message: "Không thể mở cửa sổ thanh toán",
-                    //         description:
-                    //             "Vui lòng kiểm tra cài đặt trình duyệt của bạn.",
-                    //     });
-                    // }
                 }
-
+                // Cash payment flow - existing code
                 setIsModalVisible(false);
                 form.resetFields();
 
@@ -361,6 +518,8 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                     description: "Hóa đơn của bạn đã được tạo thành công.",
                     placement: "topRight",
                 });
+
+                setIsModalVisible(false);
             } else {
                 notification.error({
                     message: "Tạo hóa đơn thất bại",
@@ -445,6 +604,7 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
 
     return (
         <>
+            {/* Existing Modal */}
             <Modal
                 title="Tạo hóa đơn"
                 visible={isModalVisible}
@@ -1040,7 +1200,7 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                                                                                     }
                                                                                 >
                                                                                     {
-                                                                                        accessory.accessorie_name
+                                                                                        accessory.accessory_name
                                                                                     }
                                                                                 </Option>
                                                                             )
@@ -1336,6 +1496,175 @@ const InvoiceManagementPage: React.FC<InvoiceManagementPageProps> = ({
                         </Select>
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            {/* QR Payment Modal */}
+            <Modal
+                title={null}
+                visible={qrModalVisible}
+                onCancel={() => {
+                    if (
+                        !paymentInProcess ||
+                        window.confirm(
+                            "Hủy quá trình thanh toán có thể khiến hóa đơn không được cập nhật. Bạn có chắc chắn muốn đóng?"
+                        )
+                    ) {
+                        setQrModalVisible(false);
+                    }
+                }}
+                footer={null}
+                closable={true}
+                maskClosable={!paymentInProcess}
+                width={360}
+                centered
+                className="qr-payment-modal"
+            >
+                <div style={{ padding: "20px 0" }}>
+                    <div
+                        style={{
+                            textAlign: "center",
+                            marginBottom: "20px",
+                            padding: "0 20px",
+                            borderBottom: "1px solid #f0f0f0",
+                            paddingBottom: "15px",
+                        }}
+                    >
+                        <h2
+                            style={{
+                                fontSize: "22px",
+                                fontWeight: "bold",
+                                color: "#ea4c89",
+                                margin: "0 0 8px 0",
+                            }}
+                        >
+                            Quét mã QR để thanh toán
+                        </h2>
+                        <p
+                            style={{
+                                fontSize: "14px",
+                                color: "#888",
+                                margin: "0 0 10px 0",
+                            }}
+                        >
+                            Sử dụng ứng dụng MoMo để quét mã
+                        </p>
+                    </div>
+
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                        }}
+                    >
+                        <div
+                            style={{
+                                background:
+                                    "linear-gradient(145deg, #ffffff, #f0f0f0)",
+                                borderRadius: "15px",
+                                padding: "20px",
+                                boxShadow:
+                                    "5px 5px 15px rgba(0,0,0,0.08), -5px -5px 15px rgba(255,255,255,0.8)",
+                                marginBottom: "20px",
+                                width: "280px",
+                                display: "flex",
+                                justifyContent: "center",
+                            }}
+                        >
+                            {qrPaymentUrl && (
+                                <QRCode
+                                    value={qrPaymentUrl}
+                                    size={240}
+                                    level="H"
+                                    style={{
+                                        padding: "10px",
+                                        background: "white",
+                                        borderRadius: "10px",
+                                    }}
+                                />
+                            )}
+                        </div>
+
+                        <div
+                            style={{
+                                width: "280px",
+                                borderRadius: "12px",
+                                border: "1px solid #f0f0f0",
+                                padding: "15px",
+                                marginBottom: "10px",
+                                background: "#fafafa",
+                            }}
+                        >
+                            <p
+                                style={{
+                                    margin: "0 0 8px 0",
+                                    fontSize: "13px",
+                                    color: "#555",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                }}
+                            >
+                                <span>Mã hóa đơn:</span>
+                                <span
+                                    style={{
+                                        fontWeight: "500",
+                                        color: "#333",
+                                    }}
+                                >
+                                    {currentInvoiceId}
+                                </span>
+                            </p>
+                            {/* {paymentInProcess && (
+                                <div
+                                    style={{
+                                        textAlign: "center",
+                                        marginTop: "10px",
+                                    }}
+                                >
+                                    <div
+                                        className="payment-spinner"
+                                        style={{
+                                            display: "inline-block",
+                                            width: "20px",
+                                            height: "20px",
+                                            border: "3px solid rgba(0,0,0,.1)",
+                                            borderRadius: "50%",
+                                            borderTopColor: "#ea4c89",
+                                            animation:
+                                                "spin 1s ease-in-out infinite",
+                                            marginRight: "10px",
+                                        }}
+                                    ></div>
+                                    <span>Đang chờ thanh toán...</span>
+                                </div>
+                            )} */}
+                        </div>
+                    </div>
+
+                    <div
+                        style={{
+                            textAlign: "center",
+                            marginTop: "10px",
+                            color: "#888",
+                            fontSize: "12px",
+                            background: "#f9f9f9",
+                            padding: "8px",
+                            borderRadius: "8px",
+                        }}
+                    >
+                        <p style={{ margin: "0" }}>
+                            Thanh toán sẽ tự động cập nhật sau khi hoàn tất
+                        </p>
+                    </div>
+
+                    <style>
+                        {`
+                        @keyframes spin {
+                            to { transform: rotate(360deg); }
+                        }
+                        `}
+                    </style>
+                </div>
             </Modal>
         </>
     );

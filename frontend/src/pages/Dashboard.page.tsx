@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Row, Col, Card, Table, Select, Progress } from "antd";
+import React, { useState, useEffect } from "react";
+import { Row, Col, Card, Table, Select, Progress, Spin } from "antd";
 import {
     BarChartOutlined,
     SettingOutlined,
@@ -7,8 +7,41 @@ import {
     DollarOutlined,
 } from "@ant-design/icons";
 import { Column } from "@ant-design/charts";
+import { getAllMotocycles } from "../services/motocycle.service";
+import { getAllInvoices } from "../services/invoice.service";
+import { getAllRepairs } from "../services/repair.service";
 
 const DashboardPage: React.FC = () => {
+    const [motocycles, setMotocycles] = useState<any[]>([]);
+    const [invoices, setInvoices] = useState<any[]>([]);
+    const [repairs, setRepairs] = useState<any[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+
+    // Fetch data from APIs
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const [motocyclesData, invoicesData, repairsData] =
+                    await Promise.all([
+                        getAllMotocycles(),
+                        getAllInvoices(),
+                        getAllRepairs(),
+                    ]);
+
+                setMotocycles(motocyclesData.motocycles || []);
+                setInvoices(invoicesData || []);
+                setRepairs(repairsData.repairs || []);
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
     const [revenueFilter, setRevenueFilter] = useState<
         "7 ngày gần đây" | "30 ngày gần đây" | "90 ngày gần đây"
     >("7 ngày gần đây");
@@ -96,45 +129,29 @@ const DashboardPage: React.FC = () => {
         },
     ];
 
-    // Dữ liệu cho Top sản phẩm bán ra
-    const topProducts = [
-        { name: "Yamaha YZF-R15", percentage: "32%" },
-        { name: "Honda Wave Alpha", percentage: "28%" },
-        { name: "Engine Oil Filter", percentage: "18%" },
-        { name: "Suspension Kit", percentage: "12%" },
-    ];
+    // Tính toán top sản phẩm từ dữ liệu xe máy
+    const topProducts = motocycles.slice(0, 5).map((motocycle) => {
+        return {
+            name: motocycle.motocycle_name,
+            percentage: Math.floor(Math.random() * 40) + 10 + "%", // Random percentage for demonstration
+        };
+    });
 
-    // Dữ liệu cho Đơn hàng gần đây
-    const recentOrders = [
-        {
-            orderId: "ORD-001",
-            customer: "Nguyễn Văn A",
-            amount: "1,200,000 VND",
-            status: "Completed",
-        },
-        {
-            orderId: "ORD-002",
-            customer: "Trần Thị B",
-            amount: "800,000 VND",
-            status: "Pending",
-        },
-    ];
+    // Format dữ liệu đơn hàng gần đây từ API
+    const recentOrders = invoices.slice(0, 5).map((invoice) => ({
+        orderId: invoice.invoice_id,
+        customer: invoice.customer?.fullname || "N/A",
+        amount: `${invoice.total_amount?.toLocaleString() || 0} VND`,
+        status: invoice.status,
+    }));
 
-    // Dữ liệu cho Danh sách sửa chữa gần đây
-    const recentRepairs = [
-        {
-            id: "REP-001",
-            vehicle: "Honda Wave Alpha",
-            customer: "Nguyễn Văn A",
-            status: "Completed",
-        },
-        {
-            id: "REP-002",
-            vehicle: "Yamaha Exciter",
-            customer: "Trần Thị B",
-            status: "In Progress",
-        },
-    ];
+    // Format dữ liệu sửa chữa gần đây từ API
+    const recentRepairs = repairs.slice(0, 5).map((repair) => ({
+        id: repair.repair_id,
+        vehicle: repair.motocycle_name,
+        customer: repair.customer?.fullname || "N/A",
+        status: repair.status,
+    }));
 
     const orderColumns = [
         { title: "Order ID", dataIndex: "orderId", key: "orderId" },
@@ -149,6 +166,14 @@ const DashboardPage: React.FC = () => {
         { title: "Customer", dataIndex: "customer", key: "customer" },
         { title: "Status", dataIndex: "status", key: "status" },
     ];
+
+    if (loading) {
+        return (
+            <div style={{ textAlign: "center", padding: "50px" }}>
+                <Spin size="large" tip="Đang tải dữ liệu..." />
+            </div>
+        );
+    }
 
     return (
         <div style={{ padding: 24 }}>

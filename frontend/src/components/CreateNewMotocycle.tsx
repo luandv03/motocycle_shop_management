@@ -29,7 +29,15 @@ const { Option } = Select;
 interface CreateNewMotocycleProps {
     visible: boolean;
     onCancel: () => void;
-    onSave: () => void;
+    onSave: (data: {
+        key: string;
+        id: string;
+        name: string;
+        brand: string;
+        model: string;
+        status: string;
+        stock: number;
+    }) => void;
 }
 
 const CreateNewMotocycle: React.FC<CreateNewMotocycleProps> = ({
@@ -115,9 +123,24 @@ const CreateNewMotocycle: React.FC<CreateNewMotocycleProps> = ({
                     price: color.price,
                 })),
             };
-            await createMotocycle(payload); // Gọi API tạo motocycle
+            const res = await createMotocycle(payload); // Gọi API tạo motocycle
+            console.log(res);
             message.success("Tạo xe máy mới thành công!");
-            onSave();
+            onSave({
+                key: res?.motocycle_id,
+                id: res?.motocycle_id,
+                name: res?.motocycle_name,
+                brand: brands.find((b) => b.brand_id === values.brand)
+                    ?.brand_name,
+                model: models.find(
+                    (m) => m.motocycle_model_id === values.motocycle_model_id
+                )?.motocycle_model_name,
+                status: res?.status,
+                stock: values.colors.reduce(
+                    (acc: number, color: any) => acc + Number(color.quantity),
+                    0
+                ),
+            });
             form.resetFields();
             setPhotos([]);
         } catch (error: any) {

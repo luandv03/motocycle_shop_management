@@ -8,6 +8,7 @@ import {
     ForeignKey,
     BelongsTo,
     HasMany,
+    BeforeBulkCreate,
 } from "sequelize-typescript";
 import { MotocycleModel } from "./MotocycleModel";
 import { Photo } from "./Photo";

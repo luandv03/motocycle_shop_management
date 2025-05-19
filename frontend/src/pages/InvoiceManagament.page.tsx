@@ -431,6 +431,17 @@ const InvoiceManagementPage: React.FC = () => {
                     ]);
                     message.success("Tạo hóa đơn thành công!");
                 }}
+                handleChangeStatusInvoice={(invoiceId: string) => {
+                    console.log("Cập nhật trạng thái hóa đơn", invoiceId);
+                    setInvoices((prevInvoices) =>
+                        prevInvoices.map((invoice) =>
+                            invoice.invoiceId == invoiceId
+                                ? { ...invoice, status: "Đã thanh toán" }
+                                : invoice
+                        )
+                    );
+                    message.success("Cập nhật trạng thái hóa đơn thành công!");
+                }}
             />
         </div>
     );

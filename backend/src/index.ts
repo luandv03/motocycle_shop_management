@@ -1,5 +1,7 @@
 import express from "express";
+import http from "http";
 import cors from "cors"; // Import middleware CORS
+import { initSocketIO } from "./config/socket";
 
 import sequelize from "./configs/database";
 import userRoutes from "./routes/user/user.route";
@@ -14,7 +16,11 @@ import invoiceRoutes from "./routes/invoice/invoice.route";
 import paymentRoutes from "./routes/payment/payment.route";
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Initialize Socket.IO
+initSocketIO(server);
 
 // Middleware
 app.use(express.json());
@@ -22,7 +28,7 @@ app.use(express.json());
 // CORS configuration
 app.use(
     cors({
-        origin: "*", // Cho phép tất cả các nguồn (hoặc thay bằng danh sách nguồn cụ thể)
+        origin: "http://localhost:5173", // Cho phép tất cả các nguồn (hoặc thay bằng danh sách nguồn cụ thể)
         methods: ["GET", "POST", "PUT", "DELETE"], // Các phương thức HTTP được phép
         allowedHeaders: ["Content-Type", "Authorization"], // Các header được phép
     })
@@ -55,7 +61,8 @@ const startServer = async () => {
         await sequelize.authenticate();
         console.log("Database connected successfully!");
 
-        app.listen(PORT, () => {
+        // Change this line - use server.listen() instead of app.listen()
+        server.listen(PORT, () => {
             console.log(`Server is running on http://localhost:${PORT}`);
         });
     } catch (error) {

@@ -32,6 +32,8 @@ const BrandManagementPage: React.FC = () => {
     const [editingBrand, setEditingBrand] = useState<any>(null);
     const [data, setData] = useState<any[]>([]); // Dữ liệu danh sách brand
     const [loading, setLoading] = useState(false); // Trạng thái loading khi gọi API
+    const [searchTerm, setSearchTerm] = useState<string>(""); // Thêm state cho search term
+    const [filteredData, setFilteredData] = useState<any[]>([]); // State cho dữ liệu đã lọc
 
     const [form] = Form.useForm(); // Khởi tạo form
 
@@ -43,19 +45,35 @@ const BrandManagementPage: React.FC = () => {
                 pagination.current,
                 pagination.pageSize
             );
-            setData(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                response.brands.map((brand: any) => ({
-                    key: brand.brand_id,
-                    id: brand.brand_id,
-                    name: brand.brand_name,
-                }))
-            );
+            const brandsData = response.brands.map((brand: any) => ({
+                key: brand.brand_id,
+                id: brand.brand_id,
+                name: brand.brand_name,
+            }));
+            setData(brandsData);
+            setFilteredData(brandsData); // Khởi tạo dữ liệu đã lọc giống với dữ liệu gốc
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             message.error(error.message || "Không thể lấy danh sách hãng!");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Hàm xử lý search
+    const handleSearch = (value: string) => {
+        setSearchTerm(value);
+        if (!value.trim()) {
+            // Nếu không có từ khóa tìm kiếm, hiển thị tất cả dữ liệu
+            setFilteredData(data);
+        } else {
+            // Lọc dữ liệu dựa trên từ khóa tìm kiếm
+            const filtered = data.filter(
+                (item) =>
+                    item.name.toLowerCase().includes(value.toLowerCase()) ||
+                    item.id.toString().includes(value)
+            );
+            setFilteredData(filtered);
         }
     };
 
@@ -69,8 +87,19 @@ const BrandManagementPage: React.FC = () => {
     // Xử lý khi xác nhận xóa
     const handleDelete = () => {
         if (selectedBrand) {
-            setData((prev) =>
-                prev.filter((item) => item.id !== selectedBrand.id)
+            const updatedData = data.filter(
+                (item) => item.id !== selectedBrand.id
+            );
+            setData(updatedData);
+            setFilteredData(
+                updatedData.filter(
+                    (item) =>
+                        !searchTerm ||
+                        item.name
+                            .toLowerCase()
+                            .includes(searchTerm.toLowerCase()) ||
+                        item.id.toString().includes(searchTerm)
+                )
             );
             message.success(`Đã xóa hãng ${selectedBrand?.name}`);
         }
@@ -95,14 +124,26 @@ const BrandManagementPage: React.FC = () => {
             const res = await createBrand(values.name); // Gọi API tạo brand mới
             console.log("New Brand:", res);
 
-            setData([
-                ...data,
-                {
-                    key: res?.data?.brand_id,
-                    id: res?.data?.brand_id,
-                    name: res?.data?.brand_name,
-                },
-            ]);
+            const newBrand = {
+                key: res?.data?.brand_id,
+                id: res?.data?.brand_id,
+                name: res?.data?.brand_name,
+            };
+
+            const updatedData = [...data, newBrand];
+            setData(updatedData);
+
+            // Cập nhật dữ liệu đã lọc nếu phù hợp với từ khóa tìm kiếm hiện tại
+            if (
+                !searchTerm ||
+                newBrand.name
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase()) ||
+                newBrand.id.toString().includes(searchTerm)
+            ) {
+                setFilteredData([...filteredData, newBrand]);
+            }
+
             message.success("Thêm hãng mới thành công!");
             form.resetFields(); // Reset giá trị của form
             setIsAddModalVisible(false);
@@ -132,13 +173,23 @@ const BrandManagementPage: React.FC = () => {
     // Xử lý khi lưu chỉnh sửa
     const handleSaveEdit = async (values: any) => {
         // Giả lập cập nhật, thực tế gọi API updateBrand
-        setData((prev) =>
-            prev.map((item) =>
-                item.id === editingBrand.id
-                    ? { ...item, name: values.name }
-                    : item
+        const updatedData = data.map((item) =>
+            item.id === editingBrand.id ? { ...item, name: values.name } : item
+        );
+        setData(updatedData);
+
+        // Cập nhật dữ liệu đã lọc
+        setFilteredData(
+            updatedData.filter(
+                (item) =>
+                    !searchTerm ||
+                    item.name
+                        .toLowerCase()
+                        .includes(searchTerm.toLowerCase()) ||
+                    item.id.toString().includes(searchTerm)
             )
         );
+
         message.success("Cập nhật hãng thành công!");
         setIsEditModalVisible(false);
         setEditingBrand(null);
@@ -207,7 +258,13 @@ const BrandManagementPage: React.FC = () => {
                     <Search
                         placeholder="Tìm kiếm hãng"
                         enterButton
-                        onSearch={(value) => console.log("Search:", value)}
+                        onSearch={handleSearch}
+                        allowClear
+                        onChange={(e) => {
+                            if (!e.target.value) {
+                                handleSearch("");
+                            }
+                        }}
                     />
                 </Col>
             </Row>
@@ -228,12 +285,12 @@ const BrandManagementPage: React.FC = () => {
             {/* Bảng danh sách hãng */}
             <Table
                 columns={columns}
-                dataSource={data}
+                dataSource={filteredData} // Sử dụng dữ liệu đã lọc thay vì data
                 loading={loading}
                 pagination={{
                     current: pagination.current,
                     pageSize: pagination.pageSize,
-                    total: data.length,
+                    total: filteredData.length, // Cập nhật tổng số dựa trên dữ liệu đã lọc
                     showSizeChanger: true,
                     pageSizeOptions: ["10", "20", "50"],
                     onChange: handleTableChange,

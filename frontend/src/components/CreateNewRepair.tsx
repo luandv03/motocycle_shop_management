@@ -89,14 +89,14 @@ const CreateNewRepair: React.FC<CreateNewRepairProps> = ({
     // Thêm phụ kiện vào danh sách
     const handleAddAccessory = (value: string) => {
         const selectedAccessory = accessories.find(
-            (item) => item.accessorie_name === value
+            (item) => item.accessory_name === value
         );
         if (selectedAccessory) {
             setSelectedAccessories((prev) => [
                 ...prev,
                 {
                     accessory_id: selectedAccessory.accessory_id,
-                    name: selectedAccessory.accessorie_name,
+                    name: selectedAccessory.accessory_name,
                     price: selectedAccessory.price,
                     quantity: 1,
                 },
@@ -140,6 +140,15 @@ const CreateNewRepair: React.FC<CreateNewRepairProps> = ({
                 repair_time: values.repairTime,
             };
             const res = await createRepair(repairData);
+
+            console.log("res", res);
+            console.log("values", values);
+            console.log("selectedAccessories", selectedAccessories);
+            console.log(accessoryCost);
+            values.customer = customers.find(
+                (customer) => customer.customer_id === values.customer
+            );
+            values.id = res?.repair_id;
 
             if (res) {
                 message.success("Tạo sửa chữa mới thành công!");
@@ -262,7 +271,7 @@ const CreateNewRepair: React.FC<CreateNewRepairProps> = ({
                                                                         selected
                                                                     ) =>
                                                                         selected.name ===
-                                                                        item.accessorie_name
+                                                                        item.accessory_name
                                                                 )
                                                         )
                                                         .map((item) => (
@@ -271,11 +280,11 @@ const CreateNewRepair: React.FC<CreateNewRepairProps> = ({
                                                                     item.accessory_id
                                                                 }
                                                                 value={
-                                                                    item.accessorie_name
+                                                                    item.accessory_name
                                                                 }
                                                             >
                                                                 {
-                                                                    item.accessorie_name
+                                                                    item.accessory_name
                                                                 }{" "}
                                                                 -{" "}
                                                                 {item.price.toLocaleString()}{" "}

@@ -224,10 +224,10 @@ const ModelManagementPage: React.FC = () => {
                                 style={{ color: "#52c41a", cursor: "pointer" }}
                                 onClick={() => handleEdit(record)}
                             />
-                            <DeleteOutlined
+                            {/* <DeleteOutlined
                                 style={{ color: "#ff4d4f", cursor: "pointer" }}
                                 onClick={() => handleDelete(record)}
-                            />
+                            /> */}
                         </>
                     )}
                 </Space>

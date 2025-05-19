@@ -136,6 +136,23 @@ const ProductManagementPage: React.FC = () => {
         setFilteredData(filtered);
     };
 
+    const handleCreateMotocycle = (moto: {
+        key: string;
+        id: string;
+        name: string;
+        brand: string;
+        model: string;
+        status: string;
+        stock: number;
+    }) => {
+        setData((prevData) => [...prevData, moto]);
+        setFilteredData((prevData) => [...prevData, moto]);
+
+        setIsAddModalVisible(false);
+        // Gọi API để tạo mới xe máy
+        // Sau khi thành công, gọi lại fetchMotocycles để cập nhật danh sách
+    };
+
     // Gọi API khi component được mount
     useEffect(() => {
         fetchBrands();
@@ -216,10 +233,10 @@ const ProductManagementPage: React.FC = () => {
                                     )
                                 }
                             />
-                            <DeleteOutlined
+                            {/* <DeleteOutlined
                                 style={{ color: "#ff4d4f", cursor: "pointer" }}
                                 onClick={() => showDeleteModal(record)}
-                            />
+                            /> */}
                         </>
                     )}
                 </Space>
@@ -411,10 +428,7 @@ const ProductManagementPage: React.FC = () => {
             <CreateNewMotocycle
                 visible={isAddModalVisible}
                 onCancel={() => setIsAddModalVisible(false)}
-                onSave={(values) => {
-                    console.log("New Product:", values);
-                    setIsAddModalVisible(false);
-                }}
+                onSave={handleCreateMotocycle}
             />
         </div>
     );

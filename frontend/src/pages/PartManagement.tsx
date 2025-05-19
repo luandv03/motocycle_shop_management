@@ -97,10 +97,10 @@ const PartManagementPage: React.FC = () => {
                                 style={{ color: "#52c41a", cursor: "pointer" }}
                                 onClick={() => handleEditPart(record)}
                             />
-                            <DeleteOutlined
+                            {/* <DeleteOutlined
                                 style={{ color: "#ff4d4f", cursor: "pointer" }}
                                 onClick={() => showDeleteModal(record)}
-                            />
+                            /> */}
                         </>
                     )}
                 </Space>

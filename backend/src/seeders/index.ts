@@ -5,6 +5,11 @@ import { seedColors } from "./ColorSeeder";
 import { seedSpecifications } from "./SpecificationSeeder";
 import { seedAccessories } from "./AccessorieSeeder";
 import { seedPointRules } from "./PointRuleSeeder";
+import { seedUsers } from "./UserSeeder";
+import { seedCustomers } from "./CustomerSeeder";
+// import { seedMotocycles } from "./MotocycleSeeder";
+// import { seedRepairs } from "./RepairSeeder";
+// import { seedInvoices } from "./InvoiceSeeder";
 
 export const runSeeders = async () => {
     console.log("Seeding data...");
@@ -28,6 +33,20 @@ export const runSeeders = async () => {
 
     await seedPointRules();
     console.log("Point rules seeded successfully!");
+    await seedUsers();
+    console.log("Users seeded successfully!");
+
+    await seedCustomers();
+    console.log("Customers seeded successfully!");
+
+    // await seedMotocycles();
+    // console.log("Motorcycles seeded successfully!");
+
+    // await seedRepairs();
+    // console.log("Repairs seeded successfully!");
+
+    // await seedInvoices();
+    // console.log("Invoices seeded successfully!");
 
     console.log("All seeders completed successfully!");
 };

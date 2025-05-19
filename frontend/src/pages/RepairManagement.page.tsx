@@ -265,14 +265,19 @@ const RepairManagementPage: React.FC = () => {
                 visible={isModalVisible}
                 onClose={() => setIsModalVisible(false)}
                 onSubmit={(values, selectedAccessories, accessoryCost) => {
+                    console.log("New Repair 2:", values);
+                    console.log("Selected Accessories 2:", selectedAccessories);
+                    console.log("Accessory Cost 2:", accessoryCost);
                     const newRepair = {
                         key: Math.random().toString(),
+                        repair_id: values.id,
                         vehicle: values.vehicle,
                         customer: values.customer,
                         repairDetails: values.repairDetails,
-                        accessoriesUsed: selectedAccessories.map(
-                            (item) => `${item.name} x${item.quantity}`
-                        ),
+                        accessoriesUsed: selectedAccessories.map((item) => ({
+                            accessory_id: item.accessory_id,
+                            accessory_name: item.name,
+                        })),
                         laborCost: `${values.laborCost} VND`,
                         accessoryCost: `${accessoryCost} VND`,
                         totalCost: `${values.totalCost} VND`,
